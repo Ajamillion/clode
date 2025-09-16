@@ -89,12 +89,12 @@ preserving the long-term vision.
 | **M3 – High-Fidelity Solvers** | Month 6 | FEM/BEM coupling prototype, nonlinear extensions, Monte Carlo tolerance engine, Playwright + pytest integration tests, Docker Compose deployment. |
 | **M4 – Platform Hardening** | Month 9 | Cloud orchestration, offline cache packaging, metamaterial/active modules behind feature flags, observability dashboards, documentation for v1.0 release. |
 
-## Progress Snapshot (Iteration 9)
+## Progress Snapshot (Iteration 10)
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
-- **Milestone M2 – Optimisation Loop:** ~60 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, and the new persisted optimisation run API with background solver tasks wire optimisation state cleanly into the frontend and gateway.
-- **Overall programme:** ≈40 % toward the v1.0 roadmap ((1.0 + 0.6 + 0 + 0) ÷ 4 milestones).
-- Latest iteration introduced the run persistence layer, background task execution, and run-history REST endpoints alongside the existing suspension/excursion instrumentation, unlocking history-aware optimisation flows for downstream services.
+- **Milestone M2 – Optimisation Loop:** ~70 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, status aggregation, and Studio alignment toggles/history panels now provide an end-to-end optimisation timeline backed by the gateway.
+- **Overall programme:** ≈42 % toward the v1.0 roadmap ((1.0 + 0.7 + 0 + 0) ÷ 4 milestones).
+- Latest iteration delivered alignment-aware optimisation results (sealed vs vented heuristics), REST status aggregation (`/opt/stats`), and a Studio run-history panel fed by the persisted run API, strengthening observability for the optimisation loop.
 
 ## 4. Near-Term Backlog (Next Iterations)
 
@@ -105,10 +105,11 @@ preserving the long-term vision.
 2. **Gateway Evolution**
    - ✅ Replace optional FastAPI shim with concrete app, including async task
      manager and SQLite persistence.
-   - Define WebSocket protocol aligning with Studio’s optimisation HUD.
+   - ✅ Define WebSocket protocol aligning with Studio’s optimisation HUD.
+   - Add export/download endpoints once geometry serializers land.
 3. **Studio Integration**
    - Render SPL/impedance plots from gateway responses.
-   - Surface solver alignment metadata (Fc, Qtc, excursion margins) in HUD.
+   - ✅ Surface solver alignment metadata (Fc/Fb, excursion margins) in HUD with run history timeline and status chips.
 4. **Tooling & QA**
    - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root
      `pnpm` scripts.

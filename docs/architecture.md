@@ -27,6 +27,7 @@
 - **Studio UI**: Vite/React canvas for topology visualization, solver control, and result dashboards.
 - **CLI**: Node-based automation front end sharing the same SDK as the UI for parity and scripting.
 - **Design Gateway**: FastAPI app exposing REST + WebSocket endpoints, orchestrating solver jobs, handling caching, and publishing progress events.
+ - **Design Gateway**: FastAPI app exposing REST + WebSocket endpoints, orchestrating solver jobs, handling caching, and publishing progress events with persisted run history + statistics.
 - **Simulation Core**: Python package encapsulating loudspeaker models, reduced-order acoustic solvers, and multi-resolution optimizers with optional GPU acceleration (CuPy) when available.
 - **Local Cache & Artifact Store**: SQLite + msgpack bundles storing driver data, run histories, and exported geometries to support offline usage.
 - **Telemetry Sink**: Structured logs + metrics (OpenTelemetry/Prometheus) enabling performance tracking even in single-node mode.
@@ -45,12 +46,12 @@
 
 ### 4.2 Simulation Gateway (`services/gateway`)
 - FastAPI app that:
-  - Exposes REST endpoints for job submission, driver queries, exports.
+  - Exposes REST endpoints for job submission, driver queries, exports, and aggregation (`/opt/runs`, `/opt/stats`).
   - Returns alignment summaries (Fc/Qtc, Fb, -3 dB edges, velocity peaks) alongside solver traces.
   - Hosts WebSocket streams for live optimization telemetry (iterations, constraint hits, topology swaps).
   - Manages run lifecycle (start, pause, resume, cancel) with async tasks.
-  - Persists run inputs/outputs in SQLite using SQLModel.
-  - Uses dependency-injected `spl_core` instances for testability.
+  - Persists run inputs/outputs in SQLite via a lightweight `RunStore` with status counts + filters.
+  - Uses dependency-injected `spl_core` instances for testability and alignment heuristics (sealed/vented) based on optimisation preferences.
 
 ### 4.3 Client SDK (`packages/sdk`)
 - Generated TypeScript + Python clients sharing OpenAPI schema.
@@ -60,7 +61,7 @@
 - Vite + React + Zustand for state management.
 - Three.js-based enclosure viewer fed by gateway mesh snapshots.
 - Uses TanStack Query for API calls, Msgpack WebSocket stream for telemetry.
-- Pluggable data panels (SPL curve, impedance, constraint ledger).
+- Pluggable data panels (SPL curve, impedance, constraint ledger) plus optimisation HUD with alignment toggles and run history timeline fed by persisted run APIs.
 
 ### 4.5 CLI (`apps/cli`)
 - Node-based CLI (ts-node / bun) bundling the SDK.
@@ -108,7 +109,7 @@
 2. ✅ Land initial FastAPI gateway stub backed by the analytical sealed-box solver housed in `spl_core`.
 3. ✅ Provide unit tests validating sealed-box alignment (Fc/Qtc, SPL/impedance shape).
 4. Define shared configuration schema (`bagger.config.jsonschema`) and auto-generate TS/Python types.
-5. Wire Studio SPL plot + WebSocket telemetry using mocked backend.
+5. ✅ Wire Studio SPL plot + WebSocket telemetry using mocked backend and expose persisted run history in the UI.
 6. Set up CI pipeline executing lint/type/test on both Python and TypeScript stacks.
 
 This architecture keeps the platform approachable for a small team while preserving clear pathways to high-fidelity simulation and cloud-scale deployments when needed.

@@ -1,68 +1,158 @@
 import http from 'http'
+import { randomUUID } from 'crypto'
 import { pack } from 'msgpackr'
 import { WebSocketServer } from 'ws'
 
 const runs = new Map()
+const sockets = new Set()
+const simulations = new Map()
+
+function nowSeconds() {
+  return Date.now() / 1000
+}
 
 function sendJson(res, status, payload) {
   res.writeHead(status, { 'content-type': 'application/json' })
   res.end(JSON.stringify(payload))
 }
 
-function buildMockResult(params = {}) {
-  const targetSpl = Number(params.targetSpl ?? 118)
-  const volume = Number(params.maxVolume ?? 60)
-  const history = []
-  let loss = 1.2 + Math.max(0, (targetSpl - 110) / 12)
-  for (let i = 1; i <= 14; i += 1) {
-    loss = Math.max(loss * 0.74, 0.02)
-    history.push({ iter: i, loss, gradNorm: Math.max(loss / (i + 2), 0.01) })
-  }
-  const finalLoss = history[history.length - 1]?.loss ?? 0.02
-  const frequencies = Array.from({ length: 60 }, (_, i) => 20 * Math.pow(200 / 20, i / 59))
-  const spl = frequencies.map((f) => 105 + 8 * Math.exp(-(Math.log(f) - Math.log(55)) ** 2))
-
+function buildResponseTraces(iter) {
+  const points = 60
+  const frequencies = Array.from({ length: points }, (_, i) => 20 * Math.pow(200 / 20, i / (points - 1)))
+  const peak = 108 + Math.min(iter, 80) * 0.16
+  const spl = frequencies.map((f) => peak - 12 * Math.exp(-(Math.log10(f) - Math.log10(55)) ** 2))
+  const impedanceReal = frequencies.map((f, idx) => 5.2 + Math.sin(idx / 6) * 0.6)
+  const impedanceImag = frequencies.map((_, idx) => Math.cos(idx / 8) * 0.9)
+  const coneVelocity = frequencies.map((_, idx) => 0.25 + 0.04 * Math.sin(idx / 5))
+  const coneDisp = coneVelocity.map((vel, idx) => vel / (2 * Math.PI * Math.max(frequencies[idx], 1)))
+  const portVelocity = frequencies.map((f) => 8 + 2 * Math.exp(-(Math.log(f) - Math.log(40)) ** 2))
   return {
-    history,
-    convergence: {
-      converged: finalLoss < 0.1,
-      finalLoss,
-      iterations: history.length,
-      solution: {
-        spl_peak: Math.max(...spl),
-        fc_hz: 46.5,
-        qtc: 0.68,
-        excursion_headroom_db: 9.8,
-        safe_drive_voltage_v: 7.5
-      }
-    },
-    summary: {
-      fc_hz: 46.5,
-      qtc: 0.68,
-      f3_low_hz: 33.2,
-      f3_high_hz: 210.0,
-      max_spl_db: Math.max(...spl),
-      max_cone_velocity_ms: 0.42,
-      max_cone_displacement_m: 0.008,
-      excursion_ratio: 0.62,
-      excursion_headroom_db: 9.8,
-      safe_drive_voltage_v: 7.5
-    },
-    response: {
-      frequency_hz: frequencies,
-      spl_db: spl,
-      impedance_real: frequencies.map(() => 5 + Math.random()),
-      impedance_imag: frequencies.map(() => Math.sin(Math.random())),
-      cone_velocity_ms: frequencies.map(() => 0.2 + Math.random() * 0.1),
-      cone_displacement_m: frequencies.map(() => 0.002 + Math.random() * 0.001)
-    },
-    metrics: {
-      target_spl_db: targetSpl,
-      achieved_spl_db: Math.max(...spl),
-      volume_l: volume,
-      safe_drive_voltage_v: 7.5
+    frequency_hz: frequencies,
+    spl_db: spl,
+    impedance_real: impedanceReal,
+    impedance_imag: impedanceImag,
+    cone_velocity_ms: coneVelocity,
+    cone_displacement_m: coneDisp,
+    port_velocity_ms: portVelocity
+  }
+}
+
+function buildSummary(traces) {
+  const maxSpl = Math.max(...traces.spl_db)
+  return {
+    fb_hz: 42.0,
+    f3_low_hz: 32.0,
+    f3_high_hz: 205.0,
+    max_spl_db: maxSpl,
+    max_cone_velocity_ms: Math.max(...traces.cone_velocity_ms),
+    max_cone_displacement_m: Math.max(...traces.cone_displacement_m),
+    max_port_velocity_ms: Math.max(...traces.port_velocity_ms),
+    excursion_ratio: 0.58,
+    excursion_headroom_db: 10.8,
+    safe_drive_voltage_v: 7.2
+  }
+}
+
+function broadcast(message) {
+  const payload = typeof message === 'string' ? message : pack(message)
+  for (const socket of sockets) {
+    if (socket.readyState === socket.OPEN) {
+      socket.send(payload)
     }
   }
+}
+
+function updateRunHistory(run, entry) {
+  if (!run.result) {
+    run.result = { history: [] }
+  }
+  const history = run.result.history ?? []
+  history.push(entry)
+  run.result.history = history.slice(-256)
+  run.updated_at = nowSeconds()
+}
+
+function startSimulation(run, params) {
+  run.status = 'running'
+  run.updated_at = nowSeconds()
+  let iter = 0
+  const timer = setInterval(() => {
+    iter += 1
+    const loss = Math.max(Math.exp(-iter / 55), 0.0015)
+    const gradNorm = Math.max(loss / (iter + 4), 0.0008)
+    const metrics = {
+      spl: 110 + Math.min(iter, 80) * 0.18,
+      spl_peak: 112 + Math.min(iter, 80) * 0.2,
+      volume_l: Number(params.maxVolume ?? 60)
+    }
+    updateRunHistory(run, { iter, loss, gradNorm, metrics })
+
+    broadcast({
+      type: 'ITERATION',
+      data: {
+        iter,
+        loss,
+        gradNorm,
+        topology: iter > 60 ? 'metamaterial' : 'baseline',
+        timestamp: Date.now(),
+        metrics
+      }
+    })
+
+    if (iter === 45) {
+      broadcast({ type: 'TOPOLOGY_SWITCH', from: 'baseline', to: 'metamaterial' })
+    }
+
+    if (iter % 30 === 0) {
+      broadcast({
+        type: 'CONSTRAINT_VIOLATION',
+        constraint: 'port_velocity',
+        severity: 0.35 + Math.random() * 0.2,
+        location: { section: 'port', index: 1 }
+      })
+    }
+
+    if (iter >= 90) {
+      clearInterval(timer)
+      simulations.delete(run.id)
+      const traces = buildResponseTraces(iter)
+      const summary = buildSummary(traces)
+      run.status = 'succeeded'
+      run.updated_at = nowSeconds()
+      run.result = {
+        history: run.result?.history ?? [],
+        convergence: {
+          converged: true,
+          finalLoss: loss,
+          iterations: iter,
+          cpuTime: 14.2,
+          solution: {
+            alignment: params.preferAlignment === 'vented' ? 'vented' : 'sealed',
+            fb_hz: summary.fb_hz,
+            spl_peak: summary.max_spl_db,
+            max_port_velocity_ms: summary.max_port_velocity_ms,
+            safe_drive_voltage_v: summary.safe_drive_voltage_v
+          }
+        },
+        summary,
+        response: traces,
+        metrics: {
+          target_spl_db: Number(params.targetSpl ?? 118),
+          achieved_spl_db: summary.max_spl_db,
+          volume_l: Number(params.maxVolume ?? 60),
+          safe_drive_voltage_v: summary.safe_drive_voltage_v,
+          max_port_velocity_ms: summary.max_port_velocity_ms
+        }
+      }
+
+      broadcast({
+        type: 'CONVERGENCE',
+        data: run.result.convergence
+      })
+    }
+  }, 160)
+
+  simulations.set(run.id, timer)
 }
 
 const server = http.createServer((req, res) => {
@@ -73,8 +163,8 @@ const server = http.createServer((req, res) => {
     req.on('data', (chunk) => { body += chunk })
     req.on('end', () => {
       const params = body ? JSON.parse(body) : {}
-      const now = Date.now() / 1000
-      const id = `${now.toString(16)}-${Math.random().toString(16).slice(2, 8)}`
+      const now = nowSeconds()
+      const id = randomUUID()
       const record = {
         id,
         status: 'queued',
@@ -88,44 +178,43 @@ const server = http.createServer((req, res) => {
       sendJson(res, 200, record)
 
       setTimeout(() => {
-        const running = { ...record, status: 'running', updated_at: Date.now() / 1000 }
-        runs.set(id, running)
-      }, 150)
-
-      setTimeout(() => {
-        const succeeded = {
-          ...runs.get(id),
-          status: 'succeeded',
-          updated_at: Date.now() / 1000,
-          result: buildMockResult(params)
-        }
-        runs.set(id, succeeded)
-      }, 900)
+        const current = runs.get(id)
+        if (!current) return
+        startSimulation(current, params)
+      }, 200)
     })
     return
   }
 
   if (req.method === 'GET' && url.pathname === '/api/opt/runs') {
     const limit = Number(url.searchParams.get('limit') ?? '20')
-    const records = Array.from(runs.values())
-      .sort((a, b) => b.created_at - a.created_at)
-      .slice(0, Math.max(1, limit))
-    sendJson(res, 200, { runs: records })
+    const status = url.searchParams.get('status')
+    let records = Array.from(runs.values())
+    if (status) {
+      records = records.filter((run) => run.status === status)
+    }
+    records.sort((a, b) => b.created_at - a.created_at)
+    sendJson(res, 200, { runs: records.slice(0, Math.max(1, limit)) })
+    return
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/opt/stats') {
+    const counts = { queued: 0, running: 0, succeeded: 0, failed: 0 }
+    for (const run of runs.values()) {
+      counts[run.status] += 1
+    }
+    const total = Object.values(counts).reduce((sum, value) => sum + value, 0)
+    sendJson(res, 200, { counts, total })
     return
   }
 
   if (req.method === 'GET' && url.pathname.startsWith('/api/opt/')) {
     const id = url.pathname.split('/').pop()
-    if (!id) {
-      sendJson(res, 400, { error: 'missing id' })
-      return
-    }
-    const record = runs.get(id)
-    if (!record) {
+    if (!id || !runs.has(id)) {
       sendJson(res, 404, { error: 'not found' })
       return
     }
-    sendJson(res, 200, record)
+    sendJson(res, 200, runs.get(id))
     return
   }
 
@@ -136,58 +225,10 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ noServer: true })
 
 wss.on('connection', (ws) => {
-  let iter = 0
-  const timer = setInterval(() => {
-    iter += 1
-    const message = pack({
-      type: 'ITERATION',
-      data: {
-        iter,
-        loss: Math.exp(-iter / 55),
-        gradNorm: 1 / (iter + 4),
-        topology: iter > 50 ? 'metamaterial' : 'baseline',
-        timestamp: Date.now(),
-        metrics: {
-          spl: 112 + Math.min(iter, 80) * 0.12,
-          spl_peak: 114 + Math.min(iter, 80) * 0.15
-        }
-      }
-    })
-    ws.send(message)
-
-    if (iter === 50) {
-      ws.send(pack({ type: 'TOPOLOGY_SWITCH', from: 'baseline', to: 'metamaterial' }))
-    }
-
-    if (iter % 45 === 0) {
-      ws.send(
-        pack({
-          type: 'CONSTRAINT_VIOLATION',
-          constraint: 'port_velocity',
-          severity: 0.4 + Math.random() * 0.1,
-          location: { section: 'port', index: 2 }
-        })
-      )
-    }
-
-    if (iter === 90) {
-      ws.send(
-        pack({
-          type: 'CONVERGENCE',
-          data: {
-            converged: true,
-            finalLoss: Math.exp(-iter / 55),
-            iterations: iter,
-            cpuTime: 12.4,
-            solution: { volume: 61.2, tuning: 38.5 }
-          }
-        })
-      )
-      clearInterval(timer)
-    }
-  }, 150)
-
-  ws.on('close', () => clearInterval(timer))
+  sockets.add(ws)
+  ws.on('close', () => {
+    sockets.delete(ws)
+  })
 })
 
 server.on('upgrade', (req, socket, head) => {

@@ -19,7 +19,15 @@ export type IterationMetrics = {
   metrics?: Record<string, number>
 }
 
-export type OptParams = Record<string, number>
+export type AlignmentPreference = 'sealed' | 'vented' | 'auto'
+
+export type OptParams = {
+  targetSpl: number
+  maxVolume: number
+  weightLow: number
+  weightMid: number
+  preferAlignment?: AlignmentPreference
+}
 
 export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 
@@ -35,6 +43,7 @@ export type OptimizationRunResult = {
   summary?: Record<string, number | null>
   response?: Record<string, number[]>
   metrics?: Record<string, number>
+  alignment?: string
 }
 
 export type OptimizationRun = {
@@ -45,4 +54,11 @@ export type OptimizationRun = {
   params: Record<string, unknown>
   result?: OptimizationRunResult | null
   error?: string | null
+}
+
+export type RunStatusCounts = Partial<Record<RunStatus, number>>
+
+export type RunStats = {
+  total: number
+  counts: RunStatusCounts
 }

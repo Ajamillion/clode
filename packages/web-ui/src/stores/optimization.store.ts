@@ -3,7 +3,10 @@ import type {
   IterationMetrics,
   OptParams,
   OptimizationRun,
-  OptimizationRunResult
+  OptimizationRunResult,
+  RunStats,
+  RunStatus,
+  RunStatusCounts
 } from '@types/index'
 import { SolverWS, type ConnectionStatus } from '@lib/websocket'
 import type {
@@ -14,17 +17,27 @@ import type {
 } from '@lib/protocol'
 
 const iterationListeners = new Set<(data: IterationMetrics) => void>()
+const RUN_STATUSES: RunStatus[] = ['queued', 'running', 'succeeded', 'failed']
 
 const HISTORY_WINDOW = 256
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 const POLL_INTERVAL_MS = 2000
+const RUNS_POLL_INTERVAL_MS = 10000
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
+let runsPollTimer: ReturnType<typeof setInterval> | null = null
 
 function clearRunPoll() {
   if (pollTimer != null) {
     clearInterval(pollTimer)
     pollTimer = null
+  }
+}
+
+function clearRunHistoryPoll() {
+  if (runsPollTimer != null) {
+    clearInterval(runsPollTimer)
+    runsPollTimer = null
   }
 }
 
@@ -111,12 +124,14 @@ function normaliseRunResult(raw: unknown): OptimizationRunResult | undefined {
         solution: convergenceRaw.solution as Record<string, unknown> | undefined
       }
     : undefined
+  const alignment = typeof obj.alignment === 'string' ? obj.alignment : undefined
   return {
     history,
     convergence,
     summary: normaliseSummaryRecord(obj.summary),
     response: normaliseResponseRecord(obj.response),
-    metrics: normaliseNumberRecord(obj.metrics)
+    metrics: normaliseNumberRecord(obj.metrics),
+    alignment
   }
 }
 
@@ -136,6 +151,27 @@ function normaliseRun(raw: unknown): OptimizationRun | null {
   }
 }
 
+function normaliseStatusCounts(raw: unknown): RunStats | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const countsRaw = obj.counts as Record<string, unknown> | undefined
+  if (!countsRaw || typeof countsRaw !== 'object') return null
+  const counts: RunStatusCounts = {}
+  for (const status of RUN_STATUSES) {
+    const value = countsRaw[status]
+    const num = Number(value)
+    if (!Number.isNaN(num)) {
+      counts[status] = num
+    }
+  }
+  const totalRaw = obj.total
+  const total = Number(totalRaw)
+  return {
+    counts,
+    total: Number.isFinite(total) ? total : 0
+  }
+}
+
 type OptimizationStore = {
   status: ConnectionStatus
   currentIteration: number
@@ -151,8 +187,11 @@ type OptimizationStore = {
   solverWS: SolverWS | null
   activeRunId: string | null
   lastRun: OptimizationRun | null
+  recentRuns: OptimizationRun[]
+  runStats: RunStats | null
   startOptimization: (params: OptParams) => Promise<void>
   pauseOptimization: () => void
+  refreshRuns: () => Promise<void>
   onIterationUpdate: (cb: (d: IterationMetrics) => void) => () => void
 }
 
@@ -257,6 +296,55 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
       lastRun: null
     })
 
+  const fetchRunHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/opt/runs?limit=20`)
+      if (!response.ok) return
+      const payload = await response.json().catch(() => null)
+      if (!payload || typeof payload !== 'object') return
+      const runsRaw = (payload as Record<string, unknown>).runs
+      if (!Array.isArray(runsRaw)) return
+      const runs = runsRaw
+        .map((entry) => normaliseRun(entry))
+        .filter((run): run is OptimizationRun => run !== null)
+      set({ recentRuns: runs })
+    } catch (error) {
+      if (import.meta.env?.DEV) {
+        console.warn('Failed to refresh optimisation runs', error)
+      }
+    }
+  }
+
+  const fetchRunStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/opt/stats`)
+      if (!response.ok) return
+      const payload = await response.json().catch(() => null)
+      const stats = normaliseStatusCounts(payload)
+      if (stats) {
+        set({ runStats: stats })
+      }
+    } catch (error) {
+      if (import.meta.env?.DEV) {
+        console.warn('Failed to refresh optimisation stats', error)
+      }
+    }
+  }
+
+  const ensureRunsPolling = () => {
+    if (typeof window === 'undefined') return
+    if (runsPollTimer != null) return
+    runsPollTimer = window.setInterval(() => {
+      void fetchRunHistory()
+      void fetchRunStats()
+    }, RUNS_POLL_INTERVAL_MS)
+  }
+
+  const refreshRuns = async () => {
+    await Promise.all([fetchRunHistory(), fetchRunStats()])
+    ensureRunsPolling()
+  }
+
   return {
     status: 'idle',
     currentIteration: 0,
@@ -272,10 +360,13 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
     solverWS: null,
     activeRunId: null,
     lastRun: null,
+    recentRuns: [],
+    runStats: null,
     onIterationUpdate: (cb) => {
       iterationListeners.add(cb)
       return () => iterationListeners.delete(cb)
     },
+    refreshRuns,
     startOptimization: async (params: OptParams) => {
       const existing = get().solverWS
       existing?.close()
@@ -333,9 +424,14 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
       } catch (error) {
         console.warn('Failed to notify optimizer start', error)
       }
+
+      ensureRunsPolling()
+      void fetchRunHistory()
+      void fetchRunStats()
     },
     pauseOptimization: () => {
       clearRunPoll()
+      clearRunHistoryPoll()
       const wsInstance = get().solverWS
       wsInstance?.close()
       set({ solverWS: null, status: 'closed', activeRunId: null })

@@ -38,7 +38,7 @@ from spl_core import (
     VentedBoxSolver,
 )
 
-from .store import RunStore
+from .store import VALID_STATUSES, RunStore
 
 DEFAULT_DRIVER = DriverParameters(
     fs_hz=32.0,
@@ -53,6 +53,7 @@ DEFAULT_DRIVER = DriverParameters(
 )
 
 DEFAULT_FREQUENCY_RANGE = (math.log10(20.0), math.log10(200.0), 60)
+DEFAULT_ALIGNMENT = "sealed"
 
 app: Any
 _store: RunStore | None = None
@@ -91,45 +92,127 @@ def _iteration_history(target_spl: float, achieved_spl: float) -> tuple[list[dic
     return history, final_loss
 
 
+def _build_metrics(
+    target_spl: float,
+    achieved_spl: float,
+    volume: float,
+    safe_drive: float | None,
+    extras: dict[str, float],
+) -> dict[str, float]:
+    metrics = {
+        "target_spl_db": target_spl,
+        "achieved_spl_db": achieved_spl,
+        "volume_l": volume,
+    }
+    if safe_drive is not None:
+        metrics["safe_drive_voltage_v"] = safe_drive
+    metrics.update(extras)
+    return metrics
+
+
+def _resolve_alignment(params: dict[str, Any]) -> str:
+    preferred = str(params.get("preferAlignment") or DEFAULT_ALIGNMENT).strip().lower()
+    if preferred in {"sealed", "vented"}:
+        return preferred
+    return DEFAULT_ALIGNMENT
+
+
+def _vented_design(volume_l: float) -> VentedBoxDesign:
+    volume = max(volume_l, 10.0)
+    diameter = max(0.06, min(0.15, 0.0018 * volume + 0.065))
+    port_area = math.pi * (diameter / 2) ** 2
+    count = 2 if volume >= 85.0 else 1
+    if count > 1:
+        diameter = math.sqrt(port_area / count / math.pi) * 2
+    length = max(0.16, min(0.48, 0.0032 * volume + 0.18))
+    return VentedBoxDesign(
+        volume_l=volume,
+        port=PortGeometry(
+            diameter_m=diameter,
+            length_m=length,
+            count=count,
+            flare_factor=1.6,
+            loss_q=18.0,
+        ),
+        leakage_q=9.5,
+    )
+
+
 def _build_optimisation_result(params: dict[str, Any]) -> dict[str, Any]:
     target_spl = float(params.get("targetSpl", 115.0))
     volume = max(float(params.get("maxVolume", 55.0)), 5.0)
     drive_voltage = 2.83
 
-    solver = SealedBoxSolver(
-        DEFAULT_DRIVER,
-        BoxDesign(volume_l=volume, leakage_q=15.0),
-        drive_voltage=drive_voltage,
-    )
-    response = solver.frequency_response(_frequency_axis(), 1.0)
-    summary = solver.alignment_summary(response)
+    alignment = _resolve_alignment(params)
 
-    history, final_loss = _iteration_history(target_spl, summary.max_spl_db)
+    solution_payload: dict[str, Any]
+    metrics_extra: dict[str, float]
+    summary_dict: dict[str, Any]
+    response_dict: dict[str, Any]
+    achieved_spl: float
+    safe_drive: float | None
+
+    if alignment == "vented":
+        vented_solver = VentedBoxSolver(
+            DEFAULT_DRIVER,
+            _vented_design(volume),
+            drive_voltage=drive_voltage,
+        )
+        vented_response = vented_solver.frequency_response(_frequency_axis(), 1.0)
+        vented_summary = vented_solver.alignment_summary(vented_response)
+        summary_dict = vented_summary.to_dict()
+        response_dict = vented_response.to_dict()
+        achieved_spl = vented_summary.max_spl_db
+        safe_drive = vented_summary.safe_drive_voltage_v
+        solution_payload = {
+            "spl_peak": vented_summary.max_spl_db,
+            "fb_hz": vented_summary.fb_hz,
+            "excursion_headroom_db": vented_summary.excursion_headroom_db,
+            "max_port_velocity_ms": vented_summary.max_port_velocity_ms,
+            "safe_drive_voltage_v": safe_drive,
+        }
+        metrics_extra = {
+            "max_port_velocity_ms": vented_summary.max_port_velocity_ms,
+        }
+    else:
+        sealed_solver = SealedBoxSolver(
+            DEFAULT_DRIVER,
+            BoxDesign(volume_l=volume, leakage_q=15.0),
+            drive_voltage=drive_voltage,
+        )
+        sealed_response = sealed_solver.frequency_response(_frequency_axis(), 1.0)
+        sealed_summary = sealed_solver.alignment_summary(sealed_response)
+        summary_dict = sealed_summary.to_dict()
+        response_dict = sealed_response.to_dict()
+        achieved_spl = sealed_summary.max_spl_db
+        safe_drive = sealed_summary.safe_drive_voltage_v
+        solution_payload = {
+            "spl_peak": sealed_summary.max_spl_db,
+            "fc_hz": sealed_summary.fc_hz,
+            "qtc": sealed_summary.qtc,
+            "excursion_headroom_db": sealed_summary.excursion_headroom_db,
+            "safe_drive_voltage_v": safe_drive,
+        }
+        metrics_extra = {
+            "fc_hz": sealed_summary.fc_hz,
+        }
+
+    history, final_loss = _iteration_history(target_spl, achieved_spl)
 
     convergence = {
         "converged": final_loss < 1.0,
         "iterations": len(history),
         "finalLoss": final_loss,
-        "solution": {
-            "spl_peak": summary.max_spl_db,
-            "fc_hz": summary.fc_hz,
-            "qtc": summary.qtc,
-            "excursion_headroom_db": summary.excursion_headroom_db,
-            "safe_drive_voltage_v": summary.safe_drive_voltage_v,
-        },
+        "solution": {"alignment": alignment, **solution_payload},
     }
 
     return {
+        "alignment": alignment,
         "history": history,
         "convergence": convergence,
-        "summary": summary.to_dict(),
-        "response": response.to_dict(),
-        "metrics": {
-            "target_spl_db": target_spl,
-            "achieved_spl_db": summary.max_spl_db,
-            "volume_l": volume,
-            "safe_drive_voltage_v": summary.safe_drive_voltage_v,
-        },
+        "summary": summary_dict,
+        "response": response_dict,
+        "metrics": _build_metrics(target_spl, achieved_spl, volume, safe_drive, metrics_extra),
     }
 
 
@@ -282,9 +365,18 @@ if FastAPI is not None:  # pragma: no branch
         return record.to_dict()
 
     @app.get("/opt/runs")
-    async def list_runs(limit: int = 20) -> dict[str, Any]:
+    async def list_runs(limit: int = 20, status: str | None = None) -> dict[str, Any]:
         assert _store is not None
-        runs = [record.to_dict() for record in _store.list_runs(limit=limit)]
+        status_filter = None
+        if status is not None:
+            status_lower = status.lower()
+            if status_lower not in VALID_STATUSES:
+                raise HTTPException(status_code=400, detail="Invalid status filter")
+            status_filter = status_lower
+        runs = [
+            record.to_dict()
+            for record in _store.list_runs(limit=limit, status=status_filter)
+        ]
         return {"runs": runs}
 
     @app.get("/opt/{run_id}")
@@ -294,6 +386,13 @@ if FastAPI is not None:  # pragma: no branch
         if record is None:
             raise HTTPException(status_code=404, detail="Run not found")
         return record.to_dict()
+
+    @app.get("/opt/stats")
+    async def optimisation_stats() -> dict[str, Any]:
+        assert _store is not None
+        counts = _store.status_counts()
+        total = sum(counts.values())
+        return {"counts": counts, "total": total}
 else:  # pragma: no cover
     app = None
 

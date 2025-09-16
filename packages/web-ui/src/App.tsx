@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EnclosureRenderer } from '@core/EnclosureRenderer'
 import { OptimizationHUD } from '@components/OptimizationHUD'
+import { RunHistoryPanel } from '@components/RunHistoryPanel'
 import type { MeshData, AcousticNode } from '@types/index'
 
 const demoMesh: MeshData = {
@@ -30,6 +31,7 @@ export default function App() {
         </Canvas>
       </Suspense>
       <OptimizationHUD />
+      <RunHistoryPanel />
     </div>
   )
 }

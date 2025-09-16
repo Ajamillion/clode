@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "gateway.db"
+VALID_STATUSES = {"queued", "running", "succeeded", "failed"}
 
 
 @dataclass(slots=True)
@@ -128,13 +129,31 @@ class RunStore:
             return None
         return self._row_to_record(row)
 
-    def list_runs(self, *, limit: int = 20) -> list[RunRecord]:
+    def list_runs(self, *, limit: int = 20, status: str | None = None) -> list[RunRecord]:
+        if status is not None and status not in VALID_STATUSES:
+            raise ValueError(f"Unsupported status filter: {status}")
+
+        params: list[Any] = []
+        query = "SELECT * FROM runs"
+        if status is not None:
+            query += " WHERE status = ?"
+            params.append(status)
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(max(limit, 1))
+
+        with self._connect() as conn:
+            rows = conn.execute(query, tuple(params)).fetchall()
+        return [self._row_to_record(row) for row in rows]
+
+    def status_counts(self) -> dict[str, int]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM runs ORDER BY created_at DESC LIMIT ?",
-                (max(limit, 1),),
+                "SELECT status, COUNT(*) as count FROM runs GROUP BY status"
             ).fetchall()
-        return [self._row_to_record(row) for row in rows]
+        counts: dict[str, int] = {status: 0 for status in VALID_STATUSES}
+        for row in rows:
+            counts[row["status"]] = int(row["count"])
+        return counts
 
     def delete_all(self) -> None:
         with self._lock:

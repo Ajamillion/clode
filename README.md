@@ -13,6 +13,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ JSON schema exports for solver request/response contracts (see [`spl_core/serialization.py`](python/spl_core/serialization.py))
 - ✅ Python linting and type-checking automation wired into the pnpm workspace scripts
 - ✅ FastAPI optimisation run API with SQLite-backed persistence and background solver tasks
+- ✅ Run history API with status aggregates powering the Studio timeline panel and alignment toggles
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites
@@ -62,7 +63,7 @@ Additional services (gateway, simulation core, CLI) will be added following the 
 ## Next Steps
 - Grow the Python simulation core beyond first-order alignments (excursion limits, tolerance analysis)
 - Promote the FastAPI gateway stub into a production-ready service with persistence and WebSocket telemetry
-- Expand the Studio telemetry panels (SPL, impedance, excursion headroom overlays)
+- Expand the Studio telemetry panels (SPL, impedance, excursion headroom overlays) and wire exporter downloads
 - Wire Playwright/Vitest automation once backend contracts stabilize
 
 ## Python Simulation Core
