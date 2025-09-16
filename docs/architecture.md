@@ -40,6 +40,7 @@
   - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed, modal extensions queued) with hooks for FEM/BEM adapters.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis and reciprocity/thermal sanity checks.
+  - `serialization`: JSON schema exports for solver requests/responses used by gateway + clients.
 - **API Surface**: Plain Python classes exported through pydantic models; zero global state.
 
 ### 4.2 Simulation Gateway (`services/gateway`)

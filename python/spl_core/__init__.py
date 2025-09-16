@@ -11,6 +11,16 @@ from .acoustics.vented import (
     VentedBoxResponse,
     VentedBoxSolver,
 )
+from .serialization import (
+    dataclass_schema,
+    sealed_simulation_request_schema,
+    sealed_simulation_response_schema,
+    sealed_simulation_schema,
+    solver_json_schemas,
+    vented_simulation_request_schema,
+    vented_simulation_response_schema,
+    vented_simulation_schema,
+)
 
 __all__ = [
     "DriverParameters",
@@ -23,4 +33,12 @@ __all__ = [
     "VentedBoxSolver",
     "VentedBoxResponse",
     "VentedAlignmentSummary",
+    "dataclass_schema",
+    "sealed_simulation_request_schema",
+    "sealed_simulation_response_schema",
+    "sealed_simulation_schema",
+    "vented_simulation_request_schema",
+    "vented_simulation_response_schema",
+    "vented_simulation_schema",
+    "solver_json_schemas",
 ]

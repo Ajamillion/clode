@@ -94,13 +94,14 @@ preserving the long-term vision.
 - **Milestone M1 – Foundations:** ~90 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, and the Studio HUD are live; CI automation is the final outstanding item.
 - **Milestone M2 – Optimisation Loop:** ~10 % complete. Telemetry HUD groundwork and solver response summaries prepare the optimisation ledger planned for this milestone.
 - **Overall programme:** ≈25 % toward the v1.0 roadmap ((0.90 + 0.10 + 0 + 0) ÷ 4 milestones).
+- Latest iteration shipped JSON schema exports for sealed/vented solver requests and responses, unblocking typed API clients across the gateway and Studio UI.
 
 ## 4. Near-Term Backlog (Next Iterations)
 
 1. **Simulation Core Expansion**
    - ✅ Extend `spl_core` with vented alignment support exposed via the gateway.
    - Add compliance-curve fitting and excursion limit estimation.
-   - Add JSON schema export for solver inputs/outputs.
+   - ✅ Add JSON schema export for solver inputs/outputs.
 2. **Gateway Evolution**
    - Replace optional FastAPI shim with concrete app, including async task
      manager and SQLite persistence.
