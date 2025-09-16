@@ -40,7 +40,7 @@
   - `mechanics`: Suspension/BL curve estimators with physics-informed regularization (progressively migrating out of `drivers`).
   - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics, modal extensions queued) with hooks for FEM/BEM adapters.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
-  - `validation`: Monte Carlo tolerance analysis and reciprocity/thermal sanity checks.
+  - `validation`: Monte Carlo tolerance analysis (initial sealed/vented sweep landed) and reciprocity/thermal sanity checks.
   - `serialization`: JSON schema exports for solver requests/responses used by gateway + clients.
 - **API Surface**: Plain Python classes exported through pydantic models; zero global state.
 
@@ -48,6 +48,7 @@
 - FastAPI app that:
   - Exposes REST endpoints for job submission, driver queries, exports, and aggregation (`/opt/runs`, `/opt/stats`).
   - Returns alignment summaries (Fc/Qtc, Fb, -3 dB edges, velocity peaks) alongside solver traces.
+  - Offers Monte Carlo tolerance endpoints to summarise manufacturing risk (excursion, port velocity) directly from the gateway.
   - Hosts WebSocket streams for live optimization telemetry (iterations, constraint hits, topology swaps).
   - Manages run lifecycle (start, pause, resume, cancel) with async tasks.
   - Persists run inputs/outputs in SQLite via a lightweight `RunStore` with status counts + filters.

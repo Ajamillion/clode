@@ -21,6 +21,13 @@ from .serialization import (
     vented_simulation_response_schema,
     vented_simulation_schema,
 )
+from .tolerances import (
+    DEFAULT_TOLERANCES,
+    MetricStats,
+    ToleranceReport,
+    ToleranceSpec,
+    run_tolerance_analysis,
+)
 
 __all__ = [
     "DriverParameters",
@@ -41,4 +48,9 @@ __all__ = [
     "vented_simulation_response_schema",
     "vented_simulation_schema",
     "solver_json_schemas",
+    "ToleranceSpec",
+    "ToleranceReport",
+    "MetricStats",
+    "DEFAULT_TOLERANCES",
+    "run_tolerance_analysis",
 ]

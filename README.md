@@ -14,6 +14,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Python linting and type-checking automation wired into the pnpm workspace scripts
 - ✅ FastAPI optimisation run API with SQLite-backed persistence and background solver tasks
 - ✅ Run history API with status aggregates powering the Studio timeline panel and alignment toggles
+- ✅ Monte Carlo tolerance analysis surfaced through new sealed/vented endpoints for manufacturing risk estimates
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites
@@ -41,6 +42,8 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 5. Open http://localhost:5173 to view the demo enclosure renderer streaming synthetic optimization telemetry.
    The optimisation HUD now records backend runs via `/api/opt/start` and polls `/api/opt/{id}` for convergence data.
 
+   Monte Carlo tolerance sweeps are available via `POST /simulate/sealed/tolerances` and `/simulate/vented/tolerances` for quick manufacturing risk snapshots.
+
 ## Quality checks
 
 Run the consolidated automation from the repo root:
@@ -61,7 +64,7 @@ packages/
 Additional services (gateway, simulation core, CLI) will be added following the blueprint in `docs/architecture.md`.
 
 ## Next Steps
-- Grow the Python simulation core beyond first-order alignments (excursion limits, tolerance analysis)
+- Expand the Python simulation core with measurement ingestion hooks and higher-order models (creep, port compression)
 - Promote the FastAPI gateway stub into a production-ready service with persistence and WebSocket telemetry
 - Expand the Studio telemetry panels (SPL, impedance, excursion headroom overlays) and wire exporter downloads
 - Wire Playwright/Vitest automation once backend contracts stabilize

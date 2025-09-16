@@ -30,12 +30,15 @@ else:  # pragma: no branch
             return None
 
 from spl_core import (
+    DEFAULT_TOLERANCES,
     BoxDesign,
     DriverParameters,
     PortGeometry,
     SealedBoxSolver,
+    ToleranceSpec,
     VentedBoxDesign,
     VentedBoxSolver,
+    run_tolerance_analysis,
 )
 
 from .store import VALID_STATUSES, RunStore
@@ -292,6 +295,67 @@ class OptimizationParams(BaseModel):
         return _model_dump(self)
 
 
+class ToleranceOverrides(BaseModel):
+    driverFs: float | None = Field(None, ge=0.0, le=0.5)
+    driverQts: float | None = Field(None, ge=0.0, le=0.5)
+    driverVas: float | None = Field(None, ge=0.0, le=0.5)
+    driverRe: float | None = Field(None, ge=0.0, le=0.5)
+    driverBl: float | None = Field(None, ge=0.0, le=0.5)
+    driverMms: float | None = Field(None, ge=0.0, le=0.5)
+    driverSd: float | None = Field(None, ge=0.0, le=0.5)
+    driverLe: float | None = Field(None, ge=0.0, le=0.5)
+    boxVolume: float | None = Field(None, ge=0.0, le=0.5)
+    portDiameter: float | None = Field(None, ge=0.0, le=0.5)
+    portLength: float | None = Field(None, ge=0.0, le=0.5)
+
+
+class SealedToleranceRequest(BaseModel):
+    driver: DriverPayload
+    box: BoxPayload
+    iterations: int = Field(200, ge=1, le=1000)
+    drive_voltage: float = Field(2.83, gt=0)
+    mic_distance_m: float = Field(1.0, gt=0)
+    tolerances: ToleranceOverrides | None = Field(None)
+    excursion_limit: float = Field(1.0, gt=0)
+
+
+class VentedToleranceRequest(BaseModel):
+    driver: DriverPayload
+    box: VentedBoxPayload
+    iterations: int = Field(200, ge=1, le=1000)
+    drive_voltage: float = Field(2.83, gt=0)
+    mic_distance_m: float = Field(1.0, gt=0)
+    tolerances: ToleranceOverrides | None = Field(None)
+    excursion_limit: float = Field(1.0, gt=0)
+    port_velocity_limit_ms: float = Field(20.0, gt=0)
+
+
+def _tolerance_spec_from_payload(overrides: ToleranceOverrides | None) -> ToleranceSpec:
+    if overrides is None:
+        return DEFAULT_TOLERANCES
+    mapping = {
+        "driverFs": "driver_fs_pct",
+        "driverQts": "driver_qts_pct",
+        "driverVas": "driver_vas_pct",
+        "driverRe": "driver_re_pct",
+        "driverBl": "driver_bl_pct",
+        "driverMms": "driver_mms_pct",
+        "driverSd": "driver_sd_pct",
+        "driverLe": "driver_le_pct",
+        "boxVolume": "box_volume_pct",
+        "portDiameter": "port_diameter_pct",
+        "portLength": "port_length_pct",
+    }
+    updates: dict[str, float] = {}
+    for field, spec_key in mapping.items():
+        value = getattr(overrides, field)
+        if value is not None:
+            updates[spec_key] = float(value)
+    if not updates:
+        return DEFAULT_TOLERANCES
+    return DEFAULT_TOLERANCES.replace(**updates)
+
+
 def _run_optimisation_task(run_id: str, params: dict[str, Any]) -> None:
     if _store is None:  # pragma: no cover - FastAPI not installed
         return
@@ -356,6 +420,39 @@ if FastAPI is not None:  # pragma: no branch
         )
         return payload_dict
 
+    @app.post("/simulate/sealed/tolerances")
+    async def sealed_tolerances(payload: SealedToleranceRequest) -> dict[str, Any]:
+        spec = _tolerance_spec_from_payload(payload.tolerances)
+        report = run_tolerance_analysis(
+            "sealed",
+            payload.driver.to_driver(),
+            payload.box.to_box(),
+            _frequency_axis(),
+            payload.iterations,
+            tolerances=spec,
+            drive_voltage=payload.drive_voltage,
+            mic_distance_m=payload.mic_distance_m,
+            excursion_limit_ratio=payload.excursion_limit,
+        )
+        return report.to_dict()
+
+    @app.post("/simulate/vented/tolerances")
+    async def vented_tolerances(payload: VentedToleranceRequest) -> dict[str, Any]:
+        spec = _tolerance_spec_from_payload(payload.tolerances)
+        report = run_tolerance_analysis(
+            "vented",
+            payload.driver.to_driver(),
+            payload.box.to_box(),
+            _frequency_axis(),
+            payload.iterations,
+            tolerances=spec,
+            drive_voltage=payload.drive_voltage,
+            mic_distance_m=payload.mic_distance_m,
+            excursion_limit_ratio=payload.excursion_limit,
+            port_velocity_limit_ms=payload.port_velocity_limit_ms,
+        )
+        return report.to_dict()
+
     @app.post("/opt/start")
     async def start_optimisation(payload: OptimizationParams, background: BackgroundTasks) -> dict[str, Any]:
         params = payload.to_dict()
@@ -406,4 +503,7 @@ __all__ = [
     "VentedBoxPayload",
     "VentedRequest",
     "OptimizationParams",
+    "ToleranceOverrides",
+    "SealedToleranceRequest",
+    "VentedToleranceRequest",
 ]
