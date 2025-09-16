@@ -89,12 +89,12 @@ preserving the long-term vision.
 | **M3 – High-Fidelity Solvers** | Month 6 | FEM/BEM coupling prototype, nonlinear extensions, Monte Carlo tolerance engine, Playwright + pytest integration tests, Docker Compose deployment. |
 | **M4 – Platform Hardening** | Month 9 | Cloud orchestration, offline cache packaging, metamaterial/active modules behind feature flags, observability dashboards, documentation for v1.0 release. |
 
-## Progress Snapshot (Iteration 7)
+## Progress Snapshot (Iteration 8)
 
-- **Milestone M1 – Foundations:** ~90 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, and the Studio HUD are live; CI automation is the final outstanding item.
-- **Milestone M2 – Optimisation Loop:** ~10 % complete. Telemetry HUD groundwork and solver response summaries prepare the optimisation ledger planned for this milestone.
-- **Overall programme:** ≈25 % toward the v1.0 roadmap ((0.90 + 0.10 + 0 + 0) ÷ 4 milestones).
-- Latest iteration shipped JSON schema exports for sealed/vented solver requests and responses, unblocking typed API clients across the gateway and Studio UI.
+- **Milestone M1 – Foundations:** ~95 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, and consolidated lint/type/test scripts are in place; CI automation and deployment hardening remain open.
+- **Milestone M2 – Optimisation Loop:** ~12 % complete. Telemetry HUD groundwork, solver summaries, and the new QA hooks continue paving the way for convergence analytics.
+- **Overall programme:** ≈26 % toward the v1.0 roadmap ((0.95 + 0.12 + 0 + 0) ÷ 4 milestones).
+- Latest iteration introduced Ruff linting and MyPy type-checking through the pnpm workspace scripts, tightening the developer feedback loop ahead of CI enablement.
 
 ## 4. Near-Term Backlog (Next Iterations)
 
@@ -110,7 +110,7 @@ preserving the long-term vision.
    - Render SPL/impedance plots from gateway responses.
    - Surface solver alignment metadata (Fc, Qtc, excursion margins) in HUD.
 4. **Tooling & QA**
-   - Introduce `ruff` + `mypy` for Python lint/type checks and wire into root
+   - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root
      `pnpm` scripts.
    - Author GitHub Actions workflow running JS + Python unit suites.
 

@@ -1,6 +1,5 @@
 """Public interface for the Bagger-SPL simulation core."""
 
-from .drivers import BoxDesign, DriverParameters, PortGeometry, VentedBoxDesign
 from .acoustics.sealed import (
     SealedAlignmentSummary,
     SealedBoxResponse,
@@ -11,6 +10,7 @@ from .acoustics.vented import (
     VentedBoxResponse,
     VentedBoxSolver,
 )
+from .drivers import BoxDesign, DriverParameters, PortGeometry, VentedBoxDesign
 from .serialization import (
     dataclass_schema,
     sealed_simulation_request_schema,

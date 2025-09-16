@@ -8,9 +8,9 @@ consume the same request/response contracts without duplicating structure.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from types import UnionType
 from dataclasses import MISSING, fields, is_dataclass
-from typing import Any, Dict, Type, Union, get_args, get_origin, get_type_hints
+from types import UnionType
+from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from .acoustics.sealed import SealedAlignmentSummary
 from .acoustics.vented import VentedAlignmentSummary
@@ -20,10 +20,10 @@ SCHEMA_DRAFT = "https://json-schema.org/draft/2020-12/schema"
 
 
 def dataclass_schema(
-    cls: Type[Any],
+    cls: type[Any],
     *,
     field_overrides: Mapping[str, Mapping[str, Any]] | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return a JSON schema describing the given dataclass."""
 
     if not is_dataclass(cls):  # pragma: no cover - defensive guard
@@ -32,17 +32,17 @@ def dataclass_schema(
     overrides: Mapping[str, Mapping[str, Any]] | None = field_overrides or _DATACLASS_OVERRIDES.get(cls)
     type_hints = get_type_hints(cls)
 
-    properties: Dict[str, Dict[str, Any]] = {}
+    properties: dict[str, dict[str, Any]] = {}
     required: list[str] = []
 
     for field in fields(cls):
         field_type = type_hints.get(field.name, field.type)
         schema = _schema_for_type(field_type)
         properties[field.name] = schema
-        if field.default is MISSING and field.default_factory is MISSING:  # type: ignore[attr-defined]
+        if field.default is MISSING and field.default_factory is MISSING:
             required.append(field.name)
 
-    schema: Dict[str, Any] = {
+    schema_doc: dict[str, Any] = {
         "title": cls.__name__,
         "type": "object",
         "additionalProperties": False,
@@ -57,10 +57,10 @@ def dataclass_schema(
                 continue
             _apply_override(prop, override)
 
-    return schema
+    return schema_doc
 
 
-def sealed_simulation_request_schema() -> Dict[str, Any]:
+def sealed_simulation_request_schema() -> dict[str, Any]:
     """Return the JSON schema describing the sealed solver request payload."""
 
     return {
@@ -89,7 +89,7 @@ def sealed_simulation_request_schema() -> Dict[str, Any]:
     }
 
 
-def sealed_simulation_response_schema() -> Dict[str, Any]:
+def sealed_simulation_response_schema() -> dict[str, Any]:
     """Return the JSON schema for the sealed solver response payload."""
 
     summary_schema = dataclass_schema(SealedAlignmentSummary)
@@ -111,7 +111,7 @@ def sealed_simulation_response_schema() -> Dict[str, Any]:
     return schema
 
 
-def vented_simulation_request_schema() -> Dict[str, Any]:
+def vented_simulation_request_schema() -> dict[str, Any]:
     """Return the JSON schema describing the vented solver request payload."""
 
     return {
@@ -140,7 +140,7 @@ def vented_simulation_request_schema() -> Dict[str, Any]:
     }
 
 
-def vented_simulation_response_schema() -> Dict[str, Any]:
+def vented_simulation_response_schema() -> dict[str, Any]:
     """Return the JSON schema for the vented solver response payload."""
 
     summary_schema = dataclass_schema(VentedAlignmentSummary)
@@ -167,7 +167,7 @@ def vented_simulation_response_schema() -> Dict[str, Any]:
     return schema
 
 
-def sealed_simulation_schema() -> Dict[str, Dict[str, Any]]:
+def sealed_simulation_schema() -> dict[str, dict[str, Any]]:
     """Return both request and response schemas for the sealed solver."""
 
     return {
@@ -176,7 +176,7 @@ def sealed_simulation_schema() -> Dict[str, Dict[str, Any]]:
     }
 
 
-def vented_simulation_schema() -> Dict[str, Dict[str, Any]]:
+def vented_simulation_schema() -> dict[str, dict[str, Any]]:
     """Return both request and response schemas for the vented solver."""
 
     return {
@@ -185,7 +185,7 @@ def vented_simulation_schema() -> Dict[str, Dict[str, Any]]:
     }
 
 
-def solver_json_schemas() -> Dict[str, Dict[str, Dict[str, Any]]]:
+def solver_json_schemas() -> dict[str, dict[str, dict[str, Any]]]:
     """Return a catalog of solver schemas keyed by solver family."""
 
     return {
@@ -197,11 +197,11 @@ def solver_json_schemas() -> Dict[str, Dict[str, Dict[str, Any]]]:
 def _base_response_schema(
     *,
     title: str,
-    summary_schema: Dict[str, Any],
-    extra_properties: Mapping[str, Dict[str, Any]] | None = None,
+    summary_schema: dict[str, Any],
+    extra_properties: Mapping[str, dict[str, Any]] | None = None,
     extra_required: Sequence[str] = (),
-) -> Dict[str, Any]:
-    properties: Dict[str, Dict[str, Any]] = {
+) -> dict[str, Any]:
+    properties: dict[str, dict[str, Any]] = {
         "frequency_hz": _number_array_schema(
             title="Frequency bins (Hz)",
             min_items=1,
@@ -255,7 +255,7 @@ def _base_response_schema(
     }
 
 
-def _schema_for_type(tp: Any) -> Dict[str, Any]:
+def _schema_for_type(tp: Any) -> dict[str, Any]:
     origin = get_origin(tp)
 
     if origin is None:
@@ -269,7 +269,7 @@ def _schema_for_type(tp: Any) -> Dict[str, Any]:
             return {"type": "boolean"}
         if tp is type(None):
             return {"type": "null"}
-        if is_dataclass(tp):
+        if isinstance(tp, type) and is_dataclass(tp):
             return dataclass_schema(tp)
         return {}
 
@@ -323,8 +323,8 @@ def _number_array_schema(
     title: str | None = None,
     min_items: int = 0,
     description: str | None = None,
-) -> Dict[str, Any]:
-    schema: Dict[str, Any] = {
+) -> dict[str, Any]:
+    schema: dict[str, Any] = {
         "type": "array",
         "items": {"type": "number"},
     }
@@ -337,8 +337,8 @@ def _number_array_schema(
     return schema
 
 
-def _positive_number_schema(title: str | None = None, *, description: str | None = None) -> Dict[str, Any]:
-    schema: Dict[str, Any] = {
+def _positive_number_schema(title: str | None = None, *, description: str | None = None) -> dict[str, Any]:
+    schema: dict[str, Any] = {
         "type": "number",
         "exclusiveMinimum": 0.0,
     }
@@ -349,7 +349,7 @@ def _positive_number_schema(title: str | None = None, *, description: str | None
     return schema
 
 
-def _apply_override(schema: Dict[str, Any], override: Mapping[str, Any]) -> None:
+def _apply_override(schema: dict[str, Any], override: Mapping[str, Any]) -> None:
     if "anyOf" in schema:
         for option in schema["anyOf"]:
             if option.get("type") == "null":
@@ -359,7 +359,7 @@ def _apply_override(schema: Dict[str, Any], override: Mapping[str, Any]) -> None
         schema.update(override)
 
 
-_DRIVER_FIELD_OVERRIDES: Dict[str, Dict[str, Any]] = {
+_DRIVER_FIELD_OVERRIDES: dict[str, dict[str, Any]] = {
     "fs_hz": {"exclusiveMinimum": 0.0},
     "qts": {"exclusiveMinimum": 0.0},
     "re_ohm": {"exclusiveMinimum": 0.0},
@@ -369,12 +369,12 @@ _DRIVER_FIELD_OVERRIDES: Dict[str, Dict[str, Any]] = {
     "le_h": {"minimum": 0.0},
 }
 
-_BOX_FIELD_OVERRIDES: Dict[str, Dict[str, Any]] = {
+_BOX_FIELD_OVERRIDES: dict[str, dict[str, Any]] = {
     "volume_l": {"exclusiveMinimum": 0.0},
     "leakage_q": {"exclusiveMinimum": 0.0},
 }
 
-_PORT_FIELD_OVERRIDES: Dict[str, Dict[str, Any]] = {
+_PORT_FIELD_OVERRIDES: dict[str, dict[str, Any]] = {
     "diameter_m": {"exclusiveMinimum": 0.0},
     "length_m": {"exclusiveMinimum": 0.0},
     "count": {"minimum": 1},
@@ -382,12 +382,12 @@ _PORT_FIELD_OVERRIDES: Dict[str, Dict[str, Any]] = {
     "loss_q": {"exclusiveMinimum": 0.0},
 }
 
-_VENTED_BOX_FIELD_OVERRIDES: Dict[str, Dict[str, Any]] = {
+_VENTED_BOX_FIELD_OVERRIDES: dict[str, dict[str, Any]] = {
     "volume_l": {"exclusiveMinimum": 0.0},
     "leakage_q": {"exclusiveMinimum": 0.0},
 }
 
-_DATACLASS_OVERRIDES: Dict[type[Any], Dict[str, Dict[str, Any]]] = {
+_DATACLASS_OVERRIDES: dict[type[Any], dict[str, dict[str, Any]]] = {
     DriverParameters: _DRIVER_FIELD_OVERRIDES,
     BoxDesign: _BOX_FIELD_OVERRIDES,
     PortGeometry: _PORT_FIELD_OVERRIDES,

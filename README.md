@@ -10,6 +10,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Analytical sealed + vented-box solvers with FastAPI endpoints (see [`spl_core`](python/spl_core) and [`services/gateway`](services/gateway))
 - ✅ Alignment summary metrics (-3 dB bandwidth, velocity peaks) exposed alongside solver responses
 - ✅ JSON schema exports for solver request/response contracts (see [`spl_core/serialization.py`](python/spl_core/serialization.py))
+- ✅ Python linting and type-checking automation wired into the pnpm workspace scripts
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites
@@ -22,15 +23,29 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
    ```bash
    pnpm install
    ```
-2. In one terminal start the mock backend & WebSocket feed
+2. (Optional) Install Python dev dependencies for lint/type/test workflows
+   ```bash
+   pip install -e .[dev]
+   ```
+3. In one terminal start the mock backend & WebSocket feed
    ```bash
    pnpm --filter @motosub/dev-mocks dev
    ```
-3. In another terminal launch the Studio web client
+4. In another terminal launch the Studio web client
    ```bash
    pnpm --filter @motosub/web-ui dev
    ```
-4. Open http://localhost:5173 to view the demo enclosure renderer streaming synthetic optimization telemetry.
+5. Open http://localhost:5173 to view the demo enclosure renderer streaming synthetic optimization telemetry.
+
+## Quality checks
+
+Run the consolidated automation from the repo root:
+
+```bash
+pnpm lint        # eslint for the web workspace + ruff for python modules
+pnpm typecheck   # tsconfig builds + mypy over python/services
+pnpm py:test     # Python unit tests
+```
 
 ## Workspace Layout
 ```

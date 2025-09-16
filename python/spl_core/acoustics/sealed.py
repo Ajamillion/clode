@@ -8,9 +8,9 @@ extensions, non-linear suspension) in later milestones.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from math import log10, pi, sqrt
-from typing import Iterable, List
 
 from ..drivers import AIR_DENSITY, BoxDesign, DriverParameters
 from ._utils import find_band_edges
@@ -22,12 +22,12 @@ P_REF = 20e-6  # 20 µPa reference pressure for SPL
 class SealedBoxResponse:
     """Frequency-domain response of a sealed-box system."""
 
-    frequency_hz: List[float]
-    spl_db: List[float]
-    impedance_ohm: List[complex]
-    cone_velocity_ms: List[float]
+    frequency_hz: list[float]
+    spl_db: list[float]
+    impedance_ohm: list[complex]
+    cone_velocity_ms: list[float]
 
-    def to_dict(self) -> dict[str, List[float]]:
+    def to_dict(self) -> dict[str, list[float]]:
         """Return a JSON-serialisable representation of the response."""
 
         return {
@@ -93,10 +93,10 @@ class SealedBoxSolver:
     def frequency_response(self, frequencies_hz: Iterable[float], mic_distance_m: float = 1.0) -> SealedBoxResponse:
         """Compute SPL/impedance over the requested frequencies."""
 
-        freq_list: List[float] = []
-        spl_list: List[float] = []
-        imp_list: List[complex] = []
-        vel_list: List[float] = []
+        freq_list: list[float] = []
+        spl_list: list[float] = []
+        imp_list: list[complex] = []
+        vel_list: list[float] = []
 
         cms_total = self._cms_total
         driver = self.driver

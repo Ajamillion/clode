@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Any, cast
 
 try:  # pragma: no cover - FastAPI is optional for the unit test sweep
     from fastapi import FastAPI
     from pydantic import BaseModel, Field
 except ImportError:  # pragma: no cover
-    FastAPI = None  # type: ignore
-    BaseModel = object  # type: ignore
-    Field = lambda *_, **__: None  # type: ignore
+    FastAPI = None
+    BaseModel = object
+
+    def Field(*_: object, **__: object) -> Any:
+        return None
 
 from spl_core import (
     BoxDesign,
@@ -21,8 +23,9 @@ from spl_core import (
     VentedBoxSolver,
 )
 
+app: Any
 
-class DriverPayload(BaseModel):  # type: ignore[misc]
+class DriverPayload(BaseModel):
     fs_hz: float = Field(..., gt=0)
     qts: float = Field(..., gt=0)
     vas_l: float = Field(..., gt=0)
@@ -33,36 +36,36 @@ class DriverPayload(BaseModel):  # type: ignore[misc]
     le_h: float = Field(0.0007, ge=0)
 
     def to_driver(self) -> DriverParameters:
-        data: Dict[str, float]
+        data: dict[str, float]
         if hasattr(self, "model_dump"):
-            data = self.model_dump()  # type: ignore[assignment]
+            data = cast(dict[str, float], self.model_dump())
         else:  # pragma: no cover - fallback for type checkers
             data = dict(self.__dict__)
-        return DriverParameters(**data)  # type: ignore[arg-type]
+        return DriverParameters(**data)
 
 
-class BoxPayload(BaseModel):  # type: ignore[misc]
+class BoxPayload(BaseModel):
     volume_l: float = Field(..., gt=0)
     leakage_q: float = Field(15.0, gt=0)
 
     def to_box(self) -> BoxDesign:
-        data: Dict[str, float]
+        data: dict[str, float]
         if hasattr(self, "model_dump"):
-            data = self.model_dump()  # type: ignore[assignment]
+            data = cast(dict[str, float], self.model_dump())
         else:  # pragma: no cover
             data = dict(self.__dict__)
-        return BoxDesign(**data)  # type: ignore[arg-type]
+        return BoxDesign(**data)
 
 
-class SealedRequest(BaseModel):  # type: ignore[misc]
+class SealedRequest(BaseModel):
     driver: DriverPayload
     box: BoxPayload
-    frequencies_hz: List[float] = Field(..., min_items=1)
+    frequencies_hz: list[float] = Field(..., min_items=1)
     mic_distance_m: float = Field(1.0, gt=0)
     drive_voltage: float = Field(2.83, gt=0)
 
 
-class PortPayload(BaseModel):  # type: ignore[misc]
+class PortPayload(BaseModel):
     diameter_m: float = Field(..., gt=0)
     length_m: float = Field(..., gt=0)
     count: int = Field(1, gt=0)
@@ -70,15 +73,15 @@ class PortPayload(BaseModel):  # type: ignore[misc]
     loss_q: float = Field(18.0, gt=0)
 
     def to_port(self) -> PortGeometry:
-        data: Dict[str, float | int]
+        data: dict[str, Any]
         if hasattr(self, "model_dump"):
-            data = self.model_dump()  # type: ignore[assignment]
+            data = cast(dict[str, Any], self.model_dump())
         else:  # pragma: no cover
             data = dict(self.__dict__)
-        return PortGeometry(**data)  # type: ignore[arg-type]
+        return PortGeometry(**data)
 
 
-class VentedBoxPayload(BaseModel):  # type: ignore[misc]
+class VentedBoxPayload(BaseModel):
     volume_l: float = Field(..., gt=0)
     leakage_q: float = Field(10.0, gt=0)
     port: PortPayload
@@ -91,10 +94,10 @@ class VentedBoxPayload(BaseModel):  # type: ignore[misc]
         )
 
 
-class VentedRequest(BaseModel):  # type: ignore[misc]
+class VentedRequest(BaseModel):
     driver: DriverPayload
     box: VentedBoxPayload
-    frequencies_hz: List[float] = Field(..., min_items=1)
+    frequencies_hz: list[float] = Field(..., min_items=1)
     mic_distance_m: float = Field(1.0, gt=0)
     drive_voltage: float = Field(2.83, gt=0)
 
@@ -107,7 +110,7 @@ if FastAPI is not None:  # pragma: no branch
         return {"status": "ok"}
 
     @app.post("/simulate/sealed")
-    async def simulate_sealed(payload: SealedRequest) -> dict[str, List[float]]:
+    async def simulate_sealed(payload: SealedRequest) -> dict[str, Any]:
         solver = SealedBoxSolver(
             payload.driver.to_driver(),
             payload.box.to_box(),
@@ -115,7 +118,7 @@ if FastAPI is not None:  # pragma: no branch
         )
         response = solver.frequency_response(payload.frequencies_hz, payload.mic_distance_m)
         summary = solver.alignment_summary(response)
-        payload_dict = response.to_dict()
+        payload_dict: dict[str, Any] = dict(response.to_dict())
         payload_dict.update(
             {
                 "summary": summary.to_dict(),
@@ -126,7 +129,7 @@ if FastAPI is not None:  # pragma: no branch
         return payload_dict
 
     @app.post("/simulate/vented")
-    async def simulate_vented(payload: VentedRequest) -> dict[str, List[float]]:
+    async def simulate_vented(payload: VentedRequest) -> dict[str, Any]:
         solver = VentedBoxSolver(
             payload.driver.to_driver(),
             payload.box.to_box(),
@@ -134,7 +137,7 @@ if FastAPI is not None:  # pragma: no branch
         )
         response = solver.frequency_response(payload.frequencies_hz, payload.mic_distance_m)
         summary = solver.alignment_summary(response)
-        payload_dict = response.to_dict()
+        payload_dict: dict[str, Any] = dict(response.to_dict())
         payload_dict.update(
             {
                 "summary": summary.to_dict(),
@@ -144,7 +147,7 @@ if FastAPI is not None:  # pragma: no branch
         )
         return payload_dict
 else:  # pragma: no cover
-    app = None  # type: ignore
+    app = None
 
 
 __all__ = [

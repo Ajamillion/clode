@@ -1,4 +1,3 @@
-import math
 import pathlib
 import sys
 import unittest
@@ -61,13 +60,17 @@ class SealedBoxSolverTest(unittest.TestCase):
 
         self.assertIsNotNone(summary.f3_low_hz)
         self.assertIsNotNone(summary.f3_high_hz)
+        assert summary.f3_low_hz is not None
+        assert summary.f3_high_hz is not None
         self.assertLess(summary.f3_low_hz, summary.fc_hz)
         self.assertGreater(summary.f3_high_hz, summary.fc_hz)
         self.assertGreater(summary.max_spl_db, response.spl_db[0])
         self.assertGreater(summary.max_cone_velocity_ms, 0.0)
 
         summary_dict = summary.to_dict()
-        self.assertAlmostEqual(summary_dict["fc_hz"], summary.fc_hz, places=6)
+        fc_from_dict = summary_dict["fc_hz"]
+        assert fc_from_dict is not None
+        self.assertAlmostEqual(fc_from_dict, summary.fc_hz, places=6)
 
 
 if __name__ == "__main__":

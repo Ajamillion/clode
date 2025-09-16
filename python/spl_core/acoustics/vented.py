@@ -2,26 +2,26 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from math import log10, pi
-from typing import Iterable, List
 
 from ..drivers import AIR_DENSITY, DriverParameters, PortGeometry, VentedBoxDesign
-from .sealed import P_REF
 from ._utils import find_band_edges
+from .sealed import P_REF
 
 
 @dataclass(slots=True)
 class VentedBoxResponse:
     """Frequency response summary for a vented alignment."""
 
-    frequency_hz: List[float]
-    spl_db: List[float]
-    impedance_ohm: List[complex]
-    cone_velocity_ms: List[float]
-    port_air_velocity_ms: List[float]
+    frequency_hz: list[float]
+    spl_db: list[float]
+    impedance_ohm: list[complex]
+    cone_velocity_ms: list[float]
+    port_air_velocity_ms: list[float]
 
-    def to_dict(self) -> dict[str, List[float]]:
+    def to_dict(self) -> dict[str, list[float]]:
         return {
             "frequency_hz": list(self.frequency_hz),
             "spl_db": list(self.spl_db),
@@ -95,11 +95,11 @@ class VentedBoxSolver:
         if mic_distance_m <= 0:
             raise ValueError("Microphone distance must be positive")
 
-        freq_list: List[float] = []
-        spl_list: List[float] = []
-        imp_list: List[complex] = []
-        cone_vel_list: List[float] = []
-        port_vel_list: List[float] = []
+        freq_list: list[float] = []
+        spl_list: list[float] = []
+        imp_list: list[complex] = []
+        cone_vel_list: list[float] = []
+        port_vel_list: list[float] = []
 
         driver = self.driver
         sd_sq = driver.sd_m2**2

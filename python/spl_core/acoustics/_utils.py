@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from typing import List, Sequence, Tuple
+from collections.abc import Sequence
 
 
 def find_band_edges(
     frequencies: Sequence[float],
     values: Sequence[float],
     drop_db: float,
-) -> Tuple[float | None, float | None]:
+) -> tuple[float | None, float | None]:
     """Return approximate low/high frequencies where ``values`` fall ``drop_db`` below the peak.
 
     The inputs are treated as sampled points of a smooth response curve. The search assumes
@@ -22,9 +22,9 @@ def find_band_edges(
     if len(frequencies) != len(values) or not frequencies:
         return (None, None)
 
-    pairs = sorted(zip(frequencies, values), key=lambda item: item[0])
-    freqs: List[float] = [float(f) for f, _ in pairs]
-    mags: List[float] = [float(v) for _, v in pairs]
+    pairs = sorted(zip(frequencies, values, strict=False), key=lambda item: item[0])
+    freqs: list[float] = [float(freq) for freq, _ in pairs]
+    mags: list[float] = [float(mag) for _, mag in pairs]
 
     peak_val = max(mags)
     threshold = peak_val - drop_db
