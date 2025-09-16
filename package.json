@@ -1,0 +1,16 @@
+{
+  "name": "bagger-spl",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "packages/web-ui",
+    "packages/dev-mocks"
+  ],
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "py:test": "python -m unittest discover -s python/tests"
+  }
+}

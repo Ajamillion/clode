@@ -1,0 +1,170 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #020617;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: radial-gradient(circle at top, rgba(30, 64, 175, 0.35), transparent 45%), #020617;
+  color: #f8fafc;
+}
+
+canvas {
+  outline: none;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.app-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+}
+
+.hud {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  width: min(22rem, calc(100% - 3rem));
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.9rem;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(14px);
+}
+
+.hud header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.hud__status {
+  color: #38bdf8;
+}
+
+.hud__badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(59, 130, 246, 0.25);
+  color: #bfdbfe;
+}
+
+.hud__badge--good {
+  background: rgba(34, 197, 94, 0.2);
+  color: #bbf7d0;
+}
+
+.hud__badge--progress {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+.hud__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 0.75rem;
+}
+
+.hud__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.2rem;
+}
+
+.hud__value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.hud__muted {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hud__spark {
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0.85;
+}
+
+.hud__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.hud__button {
+  flex: 1;
+  appearance: none;
+  border: none;
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: linear-gradient(135deg, #2563eb, #22d3ee);
+  color: #0f172a;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.hud__button:hover:enabled {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 25px rgba(56, 189, 248, 0.25);
+}
+
+.hud__button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+  opacity: 0.7;
+}
+
+.hud__button--secondary {
+  background: rgba(15, 23, 42, 0.6);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+@media (max-width: 768px) {
+  .hud {
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(24rem, calc(100% - 2rem));
+  }
+
+  .hud__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
