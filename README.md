@@ -9,6 +9,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Solver telemetry HUD with typed WebSocket protocol + GPU.js pressure renderer
 - ✅ Analytical sealed + vented-box solvers with FastAPI endpoints (see [`spl_core`](python/spl_core) and [`services/gateway`](services/gateway))
 - ✅ Alignment summary metrics (-3 dB bandwidth, velocity peaks) exposed alongside solver responses
+- ✅ Suspension compliance curve helper and excursion headroom metrics for sealed + vented solvers
 - ✅ JSON schema exports for solver request/response contracts (see [`spl_core/serialization.py`](python/spl_core/serialization.py))
 - ✅ Python linting and type-checking automation wired into the pnpm workspace scripts
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
@@ -59,7 +60,7 @@ Additional services (gateway, simulation core, CLI) will be added following the 
 ## Next Steps
 - Grow the Python simulation core beyond first-order alignments (excursion limits, tolerance analysis)
 - Promote the FastAPI gateway stub into a production-ready service with persistence and WebSocket telemetry
-- Expand the Studio telemetry panels (SPL, impedance, constraint ledger)
+- Expand the Studio telemetry panels (SPL, impedance, excursion headroom overlays)
 - Wire Playwright/Vitest automation once backend contracts stabilize
 
 ## Python Simulation Core

@@ -26,6 +26,7 @@ class SealedBoxResponse:
     spl_db: list[float]
     impedance_ohm: list[complex]
     cone_velocity_ms: list[float]
+    cone_displacement_m: list[float]
 
     def to_dict(self) -> dict[str, list[float]]:
         """Return a JSON-serialisable representation of the response."""
@@ -36,6 +37,7 @@ class SealedBoxResponse:
             "impedance_real": [float(z.real) for z in self.impedance_ohm],
             "impedance_imag": [float(z.imag) for z in self.impedance_ohm],
             "cone_velocity_ms": list(self.cone_velocity_ms),
+            "cone_displacement_m": list(self.cone_displacement_m),
         }
 
 
@@ -49,6 +51,10 @@ class SealedAlignmentSummary:
     f3_high_hz: float | None
     max_spl_db: float
     max_cone_velocity_ms: float
+    max_cone_displacement_m: float
+    excursion_ratio: float | None
+    excursion_headroom_db: float | None
+    safe_drive_voltage_v: float | None
 
     def to_dict(self) -> dict[str, float | None]:
         return {
@@ -58,6 +64,10 @@ class SealedAlignmentSummary:
             "f3_high_hz": self.f3_high_hz,
             "max_spl_db": self.max_spl_db,
             "max_cone_velocity_ms": self.max_cone_velocity_ms,
+            "max_cone_displacement_m": self.max_cone_displacement_m,
+            "excursion_ratio": self.excursion_ratio,
+            "excursion_headroom_db": self.excursion_headroom_db,
+            "safe_drive_voltage_v": self.safe_drive_voltage_v,
         }
 
 
@@ -97,6 +107,7 @@ class SealedBoxSolver:
         spl_list: list[float] = []
         imp_list: list[complex] = []
         vel_list: list[float] = []
+        disp_list: list[float] = []
 
         cms_total = self._cms_total
         driver = self.driver
@@ -123,9 +134,12 @@ class SealedBoxSolver:
             freq_list.append(f)
             spl_list.append(spl)
             imp_list.append(ze)
-            vel_list.append(abs(velocity))
+            displacement = abs(velocity) / max(omega, 1e-9)
 
-        return SealedBoxResponse(freq_list, spl_list, imp_list, vel_list)
+            vel_list.append(abs(velocity))
+            disp_list.append(displacement)
+
+        return SealedBoxResponse(freq_list, spl_list, imp_list, vel_list, disp_list)
 
     def alignment_summary(self, response: SealedBoxResponse) -> SealedAlignmentSummary:
         """Derive key alignment metrics from a previously computed response."""
@@ -133,6 +147,17 @@ class SealedBoxSolver:
         max_spl = max(response.spl_db, default=0.0)
         f3_low, f3_high = find_band_edges(response.frequency_hz, response.spl_db, 3.0)
         max_velocity = max(response.cone_velocity_ms, default=0.0)
+        max_displacement = max(response.cone_displacement_m, default=0.0)
+
+        excursion_ratio: float | None = None
+        excursion_headroom_db: float | None = None
+        safe_drive: float | None = None
+
+        xmax = self.driver.xmax_m()
+        if xmax and max_displacement > 0.0:
+            excursion_ratio = max_displacement / xmax
+            excursion_headroom_db = -20.0 * log10(excursion_ratio)
+            safe_drive = self.drive_voltage / max(excursion_ratio, 1.0)
 
         return SealedAlignmentSummary(
             fc_hz=self.system_resonance(),
@@ -141,6 +166,10 @@ class SealedBoxSolver:
             f3_high_hz=f3_high,
             max_spl_db=max_spl,
             max_cone_velocity_ms=max_velocity,
+            max_cone_displacement_m=max_displacement,
+            excursion_ratio=excursion_ratio,
+            excursion_headroom_db=excursion_headroom_db,
+            safe_drive_voltage_v=safe_drive,
         )
 
 

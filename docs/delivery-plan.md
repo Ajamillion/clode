@@ -89,18 +89,18 @@ preserving the long-term vision.
 | **M3 – High-Fidelity Solvers** | Month 6 | FEM/BEM coupling prototype, nonlinear extensions, Monte Carlo tolerance engine, Playwright + pytest integration tests, Docker Compose deployment. |
 | **M4 – Platform Hardening** | Month 9 | Cloud orchestration, offline cache packaging, metamaterial/active modules behind feature flags, observability dashboards, documentation for v1.0 release. |
 
-## Progress Snapshot (Iteration 8)
+## Progress Snapshot (Iteration 9)
 
-- **Milestone M1 – Foundations:** ~95 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, and consolidated lint/type/test scripts are in place; CI automation and deployment hardening remain open.
-- **Milestone M2 – Optimisation Loop:** ~12 % complete. Telemetry HUD groundwork, solver summaries, and the new QA hooks continue paving the way for convergence analytics.
-- **Overall programme:** ≈26 % toward the v1.0 roadmap ((0.95 + 0.12 + 0 + 0) ÷ 4 milestones).
-- Latest iteration introduced Ruff linting and MyPy type-checking through the pnpm workspace scripts, tightening the developer feedback loop ahead of CI enablement.
+- **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
+- **Milestone M2 – Optimisation Loop:** ~50 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, and excursion headroom metrics wire optimisation state cleanly into the frontend and API contracts.
+- **Overall programme:** ≈37.5 % toward the v1.0 roadmap ((1.0 + 0.5 + 0 + 0) ÷ 4 milestones).
+- Latest iteration added suspension compliance curve helpers, cone displacement traces, and excursion headroom estimates returned via both solvers and the gateway, enabling downstream optimisation policies to respect mechanical limits.
 
 ## 4. Near-Term Backlog (Next Iterations)
 
 1. **Simulation Core Expansion**
    - ✅ Extend `spl_core` with vented alignment support exposed via the gateway.
-   - Add compliance-curve fitting and excursion limit estimation.
+   - ✅ Add compliance-curve fitting and excursion limit estimation.
    - ✅ Add JSON schema export for solver inputs/outputs.
 2. **Gateway Evolution**
    - Replace optional FastAPI shim with concrete app, including async task

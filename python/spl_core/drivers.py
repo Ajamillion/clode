@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from math import pi, sqrt
 
@@ -36,6 +37,9 @@ class DriverParameters:
 
     vas_l: float | None = None
     """Equivalent compliance volume (litres). Optional if Cms derived from fs/mms."""
+
+    xmax_mm: float | None = None
+    """One-way linear excursion limit (millimetres)."""
 
     def vas_m3(self) -> float:
         """Return the compliance volume in cubic metres."""
@@ -72,6 +76,53 @@ class DriverParameters:
 
         w_s = 2 * pi * self.fs_hz
         return (w_s * self.mms_kg) / self.qms()
+
+    def xmax_m(self) -> float | None:
+        """Return the linear excursion limit in metres if provided."""
+
+        if self.xmax_mm is None:
+            return None
+        return self.xmax_mm / 1000.0
+
+    def compliance_curve(
+        self,
+        displacements_mm: Iterable[float],
+        *,
+        softening_factor: float = 0.45,
+        stiffening_factor: float = 0.12,
+    ) -> list[tuple[float, float]]:
+        """Return a symmetric Cms(x) approximation across the supplied offsets.
+
+        The curve follows a gentle softening profile up to the declared ``xmax`` and
+        gradually stiffens beyond the limit to reflect suspension end-stops. When
+        ``xmax`` is not provided the function infers a reference excursion from the
+        sampled range so callers can still obtain a well behaved curve for visual
+        feedback.
+        """
+
+        samples = [float(x) for x in displacements_mm]
+        if not samples:
+            return []
+
+        base_cms = self.compliance()
+        ref_limit_m = self.xmax_m()
+        if ref_limit_m is None:
+            peak_mm = max(abs(x) for x in samples)
+            ref_limit_m = max(peak_mm / 1000.0, 1e-6)
+
+        curve: list[tuple[float, float]] = []
+        for offset_mm in samples:
+            offset_m = offset_mm / 1000.0
+            ratio = min(abs(offset_m) / ref_limit_m, 4.0)
+
+            # Softening around the middle of the suspension travel followed by a
+            # progressive stiffening once the excursion approaches mechanical stops.
+            softening = 1.0 + softening_factor * ratio**2
+            stiffening = 1.0 + stiffening_factor * max(ratio - 1.0, 0.0) ** 2
+            cms = base_cms * softening / stiffening
+            curve.append((offset_mm, cms))
+
+        return curve
 
 
 @dataclass(slots=True)

@@ -23,6 +23,7 @@ class VentedBoxSolverTest(unittest.TestCase):
             sd_m2=0.089,
             le_h=0.0008,
             vas_l=140.0,
+            xmax_mm=13.0,
         )
 
         port = PortGeometry(diameter_m=0.1, length_m=0.22, count=1, loss_q=16.0)
@@ -40,6 +41,7 @@ class VentedBoxSolverTest(unittest.TestCase):
 
         self.assertEqual(len(response.frequency_hz), 3)
         self.assertEqual(len(response.port_air_velocity_ms), 3)
+        self.assertEqual(len(response.cone_displacement_m), 3)
 
         # Port velocity should peak near tuning while cone velocity dips
         port_low, port_fb, port_high = response.port_air_velocity_ms
@@ -48,6 +50,7 @@ class VentedBoxSolverTest(unittest.TestCase):
         self.assertGreater(port_fb, port_low)
         self.assertGreater(port_fb, port_high)
         self.assertLess(cone_fb, cone_low)
+        self.assertLess(response.cone_displacement_m[1], response.cone_displacement_m[0])
 
         # SPL should rise meaningfully as we move above tuning
         spl_low, spl_mid, spl_high = response.spl_db
@@ -55,6 +58,7 @@ class VentedBoxSolverTest(unittest.TestCase):
         self.assertLess(abs(spl_mid - spl_low), 12.0)
 
         self.assertIn("port_velocity_ms", response.to_dict())
+        self.assertIn("cone_displacement_m", response.to_dict())
 
     def test_impedance_double_peak(self) -> None:
         freqs = [float(f) for f in range(20, 151, 5)]
@@ -83,10 +87,14 @@ class VentedBoxSolverTest(unittest.TestCase):
         self.assertIsNotNone(summary.f3_high_hz)
         self.assertGreater(summary.max_port_velocity_ms, 0.0)
         self.assertGreater(summary.max_cone_velocity_ms, 0.0)
+        self.assertGreater(summary.max_cone_displacement_m, 0.0)
         self.assertGreater(summary.max_spl_db, response.spl_db[0])
+        self.assertIsNotNone(summary.excursion_ratio)
+        self.assertIsNotNone(summary.safe_drive_voltage_v)
 
         summary_dict = summary.to_dict()
         self.assertIn("max_port_velocity_ms", summary_dict)
+        self.assertIn("max_cone_displacement_m", summary_dict)
 
 
 if __name__ == "__main__":

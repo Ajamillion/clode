@@ -124,6 +124,9 @@ if FastAPI is not None:  # pragma: no branch
                 "summary": summary.to_dict(),
                 "fc_hz": summary.fc_hz,
                 "qtc": summary.qtc,
+                "excursion_ratio": summary.excursion_ratio,
+                "excursion_headroom_db": summary.excursion_headroom_db,
+                "safe_drive_voltage_v": summary.safe_drive_voltage_v,
             }
         )
         return payload_dict
@@ -143,6 +146,9 @@ if FastAPI is not None:  # pragma: no branch
                 "summary": summary.to_dict(),
                 "fb_hz": summary.fb_hz,
                 "max_port_velocity_ms": summary.max_port_velocity_ms,
+                "excursion_ratio": summary.excursion_ratio,
+                "excursion_headroom_db": summary.excursion_headroom_db,
+                "safe_drive_voltage_v": summary.safe_drive_voltage_v,
             }
         )
         return payload_dict

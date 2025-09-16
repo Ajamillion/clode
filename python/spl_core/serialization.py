@@ -227,6 +227,11 @@ def _base_response_schema(
             min_items=1,
             description="Voice-coil/cone velocity magnitude.",
         ),
+        "cone_displacement_m": _number_array_schema(
+            title="Cone displacement (m)",
+            min_items=1,
+            description="Instantaneous cone displacement magnitude.",
+        ),
         "summary": summary_schema,
     }
 
@@ -236,6 +241,7 @@ def _base_response_schema(
         "impedance_real",
         "impedance_imag",
         "cone_velocity_ms",
+        "cone_displacement_m",
         "summary",
     ]
 
@@ -367,6 +373,7 @@ _DRIVER_FIELD_OVERRIDES: dict[str, dict[str, Any]] = {
     "mms_kg": {"exclusiveMinimum": 0.0},
     "sd_m2": {"exclusiveMinimum": 0.0},
     "le_h": {"minimum": 0.0},
+    "xmax_mm": {"exclusiveMinimum": 0.0},
 }
 
 _BOX_FIELD_OVERRIDES: dict[str, dict[str, Any]] = {

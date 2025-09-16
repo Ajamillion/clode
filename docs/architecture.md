@@ -35,9 +35,9 @@
 
 ### 4.1 Core Physics Library (`python/spl_core`)
 - **Modules**:
-  - `drivers`: TS parameter ingestion, validation, interpolation (kNN + GP-lite).
-  - `mechanics`: Suspension/BL curve estimators with physics-informed regularization.
-  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed, modal extensions queued) with hooks for FEM/BEM adapters.
+  - `drivers`: TS parameter ingestion, validation, interpolation (kNN + GP-lite) plus suspension compliance curve synthesis and excursion utilities.
+  - `mechanics`: Suspension/BL curve estimators with physics-informed regularization (progressively migrating out of `drivers`).
+  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics, modal extensions queued) with hooks for FEM/BEM adapters.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis and reciprocity/thermal sanity checks.
   - `serialization`: JSON schema exports for solver requests/responses used by gateway + clients.
