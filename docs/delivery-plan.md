@@ -96,25 +96,56 @@ preserving the long-term vision.
 - **Overall programme:** ≈46 % toward the v1.0 roadmap ((1.0 + 0.75 + 0.1 + 0) ÷ 4 milestones).
 - Latest iteration delivered Monte Carlo tolerance sweeps for sealed and vented alignments, exposing manufacturing risk metrics (excursion, port velocity) over new REST endpoints while rounding out the optimisation observability work from prior iterations.
 
-## 4. Near-Term Backlog (Next Iterations)
+## 4. Completion Strategy
+
+### 4.1 Immediate Iteration Goals
 
 1. **Simulation Core Expansion**
    - ✅ Extend `spl_core` with vented alignment support exposed via the gateway.
    - ✅ Add compliance-curve fitting and excursion limit estimation.
    - ✅ Add JSON schema export for solver inputs/outputs.
    - ✅ Introduce Monte Carlo tolerance sweeps for sealed and vented alignments with REST reporting.
+   - ➡️ Land measurement ingestion scaffolding (Klippel/REW parsers) feeding the tolerance and calibration loops.
 2. **Gateway Evolution**
-   - ✅ Replace optional FastAPI shim with concrete app, including async task
-     manager and SQLite persistence.
+   - ✅ Replace optional FastAPI shim with concrete app, including async task manager and SQLite persistence.
    - ✅ Define WebSocket protocol aligning with Studio’s optimisation HUD.
-   - Add export/download endpoints once geometry serializers land.
+   - ➡️ Add export/download endpoints once geometry serializers land.
+   - ➡️ Introduce measurement upload endpoints wiring through to the simulation core ingestion queue.
 3. **Studio Integration**
-   - Render SPL/impedance plots from gateway responses.
+   - ➡️ Render SPL/impedance plots from gateway responses with historical overlays.
    - ✅ Surface solver alignment metadata (Fc/Fb, excursion margins) in HUD with run history timeline and status chips.
+   - ➡️ Add tolerance visualisations (box plots + risk callouts) mirroring the new Monte Carlo API outputs.
 4. **Tooling & QA**
-   - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root
-     `pnpm` scripts.
-   - Author GitHub Actions workflow running JS + Python unit suites.
+   - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root `pnpm` scripts.
+   - ➡️ Author GitHub Actions workflow running JS + Python unit suites and publishing Monte Carlo/tolerance snapshots as artefacts.
+
+### 4.2 Closing Milestone M2 – Optimisation Loop
+
+- Finalise the coarse ➜ medium ➜ fine optimisation ladder by wiring differential evolution search to the existing run persistence layer and exposing adjoint/L-BFGS refinement metrics via the gateway.
+- Ship measurement ingestion MVP so real-world SPL/impedance traces can be replayed against solver predictions, unlocking the Bayesian correction flow promised in the spec.
+- Extend Studio to chart solver traces (SPL, impedance, excursion) and display constraint violation streaks, ensuring UX parity with the backend telemetry.
+- Target completion: **Iteration 14** with parallel UI/backend pairing and automated regression tests for optimisation summaries.
+
+### 4.3 Spinning up Milestone M3 – High-Fidelity Solvers
+
+- Prototype the reduced-order FEM/BEM adaptor using analytical kernels as reference outputs; guard behind a feature flag so we can iterate without destabilising existing flows.
+- Add nonlinear models (port compression, suspension creep) as optional modules in `spl_core`, emitting telemetry for Studio overlays.
+- Introduce job affinity in the gateway so heavier FEM/BEM work can be queued separately from the fast analytical solvers.
+- Target readiness: **Iterations 15–17**, delivering a demo-quality hybrid solver with automated comparison tests against baseline analytical results.
+
+### 4.4 Preparing Milestone M4 – Platform Hardening
+
+- Stand up packaging and deployment automation: Docker Compose for the full stack, plus documented offline bundles with simplified solver/driver datasets.
+- Layer observability (structured logs + Prometheus metrics) into the gateway and solver workers, wiring Grafana dashboards for runtime health.
+- Implement licensing and feature-flag enforcement paths needed for pro/academic SKUs outlined in the main spec.
+- Target readiness: **Iterations 18–20**, culminating in release-candidate documentation and installer assets.
+
+### 4.5 Risk Radar
+
+- **Data coverage for ML interpolation** – collect/curate driver datasets early; mitigation: begin ingestion tooling alongside measurement MVP to avoid blocking M3.
+- **GPU.js performance ceilings** – benchmark pressure kernels on mid-tier hardware; mitigation: provide configurable quality tiers and fallbacks to CPU kernels.
+- **Solver complexity creep** – maintain feature flags and regression tests to keep analytical path stable while FEM/BEM features mature.
+- **CI resource constraints** – mock CUDA-dependent steps in CI and document how to enable full runs locally/on dedicated agents.
 
 ## 5. Reference Benchmarks & Targets
 

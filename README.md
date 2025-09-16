@@ -64,10 +64,10 @@ packages/
 Additional services (gateway, simulation core, CLI) will be added following the blueprint in `docs/architecture.md`.
 
 ## Next Steps
-- Expand the Python simulation core with measurement ingestion hooks and higher-order models (creep, port compression)
-- Promote the FastAPI gateway stub into a production-ready service with persistence and WebSocket telemetry
-- Expand the Studio telemetry panels (SPL, impedance, excursion headroom overlays) and wire exporter downloads
-- Wire Playwright/Vitest automation once backend contracts stabilize
+- Close out the multi-resolution optimisation ladder by wiring differential evolution search and adjoint refinement into the persisted run workflow.
+- Stand up measurement ingestion (Klippel/REW) feeding tolerance calibration so Monte Carlo sweeps can be validated against real builds.
+- Extend the FastAPI gateway with export/download and measurement upload endpoints, and surface the richer traces through Studio SPL/impedance charts.
+- Add CI automation (GitHub Actions) that runs pnpm lint/typecheck/test plus the Python suite and publishes tolerance snapshots.
 
 ## Python Simulation Core
 
