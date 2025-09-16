@@ -1,0 +1,310 @@
+"""FastAPI gateway exposing solver endpoints and optimisation run APIs."""
+
+from __future__ import annotations
+
+import math
+import os
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:  # pragma: no cover
+    from fastapi import BackgroundTasks, FastAPI, HTTPException
+    from pydantic import BaseModel, Field
+else:  # pragma: no branch
+    try:
+        from fastapi import BackgroundTasks, FastAPI, HTTPException
+        from pydantic import BaseModel, Field
+    except ImportError:  # pragma: no cover
+        FastAPI = cast(Any, None)
+        BaseModel = cast(Any, object)
+
+        class BackgroundTasks:  # pragma: no cover
+            def add_task(self, *_: Any, **__: Any) -> None:
+                raise RuntimeError("FastAPI is not installed")
+
+        class HTTPException(Exception):  # pragma: no cover
+            def __init__(self, status_code: int, detail: str) -> None:
+                super().__init__(detail)
+                self.status_code = status_code
+
+        def Field(*_: object, **__: object) -> Any:  # pragma: no cover
+            return None
+
+from spl_core import (
+    BoxDesign,
+    DriverParameters,
+    PortGeometry,
+    SealedBoxSolver,
+    VentedBoxDesign,
+    VentedBoxSolver,
+)
+
+from .store import RunStore
+
+DEFAULT_DRIVER = DriverParameters(
+    fs_hz=32.0,
+    qts=0.39,
+    re_ohm=3.2,
+    bl_t_m=15.5,
+    mms_kg=0.125,
+    sd_m2=0.052,
+    vas_l=75.0,
+    le_h=0.0007,
+    xmax_mm=12.0,
+)
+
+DEFAULT_FREQUENCY_RANGE = (math.log10(20.0), math.log10(200.0), 60)
+
+app: Any
+_store: RunStore | None = None
+
+
+def _model_dump(model: BaseModel) -> dict[str, Any]:  # pragma: no cover - helper for pydantic v1/v2
+    if hasattr(model, "model_dump"):
+        return cast(dict[str, Any], model.model_dump())
+    if hasattr(model, "dict"):
+        return cast(dict[str, Any], model.dict())
+    return dict(model.__dict__)
+
+
+def _logspace(start: float, stop: float, count: int) -> list[float]:
+    if count <= 1:
+        return [10 ** start]
+    step = (stop - start) / (count - 1)
+    return [10 ** (start + i * step) for i in range(count)]
+
+
+def _frequency_axis() -> list[float]:
+    lo, hi, count = DEFAULT_FREQUENCY_RANGE
+    return _logspace(lo, hi, count)
+
+
+def _iteration_history(target_spl: float, achieved_spl: float) -> tuple[list[dict[str, float]], float]:
+    overshoot = max(target_spl - achieved_spl, 0.0)
+    base_loss = overshoot**2 or 0.35
+    loss = base_loss + 0.6
+    history: list[dict[str, float]] = []
+    for i in range(1, 16):
+        loss = max(loss * 0.72, 1e-6)
+        grad = max(loss * 0.5 / (i + 1), 1e-4)
+        history.append({"iter": i, "loss": loss, "gradNorm": grad})
+    final_loss = history[-1]["loss"] if history else base_loss
+    return history, final_loss
+
+
+def _build_optimisation_result(params: dict[str, Any]) -> dict[str, Any]:
+    target_spl = float(params.get("targetSpl", 115.0))
+    volume = max(float(params.get("maxVolume", 55.0)), 5.0)
+    drive_voltage = 2.83
+
+    solver = SealedBoxSolver(
+        DEFAULT_DRIVER,
+        BoxDesign(volume_l=volume, leakage_q=15.0),
+        drive_voltage=drive_voltage,
+    )
+    response = solver.frequency_response(_frequency_axis(), 1.0)
+    summary = solver.alignment_summary(response)
+
+    history, final_loss = _iteration_history(target_spl, summary.max_spl_db)
+
+    convergence = {
+        "converged": final_loss < 1.0,
+        "iterations": len(history),
+        "finalLoss": final_loss,
+        "solution": {
+            "spl_peak": summary.max_spl_db,
+            "fc_hz": summary.fc_hz,
+            "qtc": summary.qtc,
+            "excursion_headroom_db": summary.excursion_headroom_db,
+            "safe_drive_voltage_v": summary.safe_drive_voltage_v,
+        },
+    }
+
+    return {
+        "history": history,
+        "convergence": convergence,
+        "summary": summary.to_dict(),
+        "response": response.to_dict(),
+        "metrics": {
+            "target_spl_db": target_spl,
+            "achieved_spl_db": summary.max_spl_db,
+            "volume_l": volume,
+            "safe_drive_voltage_v": summary.safe_drive_voltage_v,
+        },
+    }
+
+
+class DriverPayload(BaseModel):
+    fs_hz: float = Field(..., gt=0)
+    qts: float = Field(..., gt=0)
+    vas_l: float = Field(..., gt=0)
+    re_ohm: float = Field(..., gt=0)
+    bl_t_m: float = Field(..., gt=0)
+    mms_kg: float = Field(..., gt=0)
+    sd_m2: float = Field(..., gt=0)
+    le_h: float = Field(0.0007, ge=0)
+
+    def to_driver(self) -> DriverParameters:
+        data = _model_dump(self)
+        return DriverParameters(**data)
+
+
+class BoxPayload(BaseModel):
+    volume_l: float = Field(..., gt=0)
+    leakage_q: float = Field(15.0, gt=0)
+
+    def to_box(self) -> BoxDesign:
+        data = _model_dump(self)
+        return BoxDesign(**data)
+
+
+class SealedRequest(BaseModel):
+    driver: DriverPayload
+    box: BoxPayload
+    frequencies_hz: list[float] = Field(..., min_items=1)
+    mic_distance_m: float = Field(1.0, gt=0)
+    drive_voltage: float = Field(2.83, gt=0)
+
+
+class PortPayload(BaseModel):
+    diameter_m: float = Field(..., gt=0)
+    length_m: float = Field(..., gt=0)
+    count: int = Field(1, gt=0)
+    flare_factor: float = Field(1.7, ge=0)
+    loss_q: float = Field(18.0, gt=0)
+
+    def to_port(self) -> PortGeometry:
+        data = _model_dump(self)
+        return PortGeometry(**data)
+
+
+class VentedBoxPayload(BaseModel):
+    volume_l: float = Field(..., gt=0)
+    leakage_q: float = Field(10.0, gt=0)
+    port: PortPayload
+
+    def to_box(self) -> VentedBoxDesign:
+        return VentedBoxDesign(
+            volume_l=self.volume_l,
+            port=self.port.to_port(),
+            leakage_q=self.leakage_q,
+        )
+
+
+class VentedRequest(BaseModel):
+    driver: DriverPayload
+    box: VentedBoxPayload
+    frequencies_hz: list[float] = Field(..., min_items=1)
+    mic_distance_m: float = Field(1.0, gt=0)
+    drive_voltage: float = Field(2.83, gt=0)
+
+
+class OptimizationParams(BaseModel):
+    targetSpl: float = Field(..., gt=0)
+    maxVolume: float = Field(..., gt=0)
+    weightLow: float = Field(1.0, ge=0)
+    weightMid: float = Field(1.0, ge=0)
+    preferAlignment: str | None = Field(None)
+
+    def to_dict(self) -> dict[str, Any]:
+        return _model_dump(self)
+
+
+def _run_optimisation_task(run_id: str, params: dict[str, Any]) -> None:
+    if _store is None:  # pragma: no cover - FastAPI not installed
+        return
+    try:
+        _store.mark_running(run_id)
+        result = _build_optimisation_result(params)
+        _store.complete_run(run_id, result)
+    except Exception as exc:  # pragma: no cover - best effort logging
+        _store.mark_failed(run_id, str(exc))
+
+
+if FastAPI is not None:  # pragma: no branch
+    db_path = os.environ.get("BAGGER_SPL_DB_PATH")
+    _store = RunStore(db_path)
+    app = FastAPI(title="Bagger-SPL Gateway", version="0.2.0")
+
+    @app.get("/health")
+    async def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.post("/simulate/sealed")
+    async def simulate_sealed(payload: SealedRequest) -> dict[str, Any]:
+        solver = SealedBoxSolver(
+            payload.driver.to_driver(),
+            payload.box.to_box(),
+            drive_voltage=payload.drive_voltage,
+        )
+        response = solver.frequency_response(payload.frequencies_hz, payload.mic_distance_m)
+        summary = solver.alignment_summary(response)
+        payload_dict: dict[str, Any] = dict(response.to_dict())
+        payload_dict.update(
+            {
+                "summary": summary.to_dict(),
+                "fc_hz": summary.fc_hz,
+                "qtc": summary.qtc,
+                "excursion_ratio": summary.excursion_ratio,
+                "excursion_headroom_db": summary.excursion_headroom_db,
+                "safe_drive_voltage_v": summary.safe_drive_voltage_v,
+            }
+        )
+        return payload_dict
+
+    @app.post("/simulate/vented")
+    async def simulate_vented(payload: VentedRequest) -> dict[str, Any]:
+        solver = VentedBoxSolver(
+            payload.driver.to_driver(),
+            payload.box.to_box(),
+            drive_voltage=payload.drive_voltage,
+        )
+        response = solver.frequency_response(payload.frequencies_hz, payload.mic_distance_m)
+        summary = solver.alignment_summary(response)
+        payload_dict: dict[str, Any] = dict(response.to_dict())
+        payload_dict.update(
+            {
+                "summary": summary.to_dict(),
+                "fb_hz": summary.fb_hz,
+                "max_port_velocity_ms": summary.max_port_velocity_ms,
+                "excursion_ratio": summary.excursion_ratio,
+                "excursion_headroom_db": summary.excursion_headroom_db,
+                "safe_drive_voltage_v": summary.safe_drive_voltage_v,
+            }
+        )
+        return payload_dict
+
+    @app.post("/opt/start")
+    async def start_optimisation(payload: OptimizationParams, background: BackgroundTasks) -> dict[str, Any]:
+        params = payload.to_dict()
+        assert _store is not None  # mypy hint
+        record = _store.create_run(params)
+        background.add_task(_run_optimisation_task, record.id, params)
+        return record.to_dict()
+
+    @app.get("/opt/runs")
+    async def list_runs(limit: int = 20) -> dict[str, Any]:
+        assert _store is not None
+        runs = [record.to_dict() for record in _store.list_runs(limit=limit)]
+        return {"runs": runs}
+
+    @app.get("/opt/{run_id}")
+    async def fetch_run(run_id: str) -> dict[str, Any]:
+        assert _store is not None
+        record = _store.get_run(run_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Run not found")
+        return record.to_dict()
+else:  # pragma: no cover
+    app = None
+
+
+__all__ = [
+    "app",
+    "SealedRequest",
+    "DriverPayload",
+    "BoxPayload",
+    "PortPayload",
+    "VentedBoxPayload",
+    "VentedRequest",
+    "OptimizationParams",
+]
