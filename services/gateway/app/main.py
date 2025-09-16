@@ -7,11 +7,11 @@ import os
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:  # pragma: no cover
-    from fastapi import BackgroundTasks, FastAPI, HTTPException
+    from fastapi import BackgroundTasks, FastAPI, HTTPException, UploadFile
     from pydantic import BaseModel, Field
 else:  # pragma: no branch
     try:
-        from fastapi import BackgroundTasks, FastAPI, HTTPException
+        from fastapi import BackgroundTasks, FastAPI, HTTPException, UploadFile
         from pydantic import BaseModel, Field
     except ImportError:  # pragma: no cover
         FastAPI = cast(Any, None)
@@ -26,6 +26,9 @@ else:  # pragma: no branch
                 super().__init__(detail)
                 self.status_code = status_code
 
+        class UploadFile:  # pragma: no cover
+            filename: str | None = None
+
         def Field(*_: object, **__: object) -> Any:  # pragma: no cover
             return None
 
@@ -33,11 +36,16 @@ from spl_core import (
     DEFAULT_TOLERANCES,
     BoxDesign,
     DriverParameters,
+    MeasurementTrace,
     PortGeometry,
     SealedBoxSolver,
     ToleranceSpec,
     VentedBoxDesign,
     VentedBoxSolver,
+    compare_measurement_to_prediction,
+    measurement_from_response,
+    parse_klippel_dat,
+    parse_rew_mdat,
     run_tolerance_analysis,
 )
 
@@ -111,6 +119,13 @@ def _build_metrics(
         metrics["safe_drive_voltage_v"] = safe_drive
     metrics.update(extras)
     return metrics
+
+
+def _measurement_from_payload(payload: MeasurementData) -> MeasurementTrace:
+    try:
+        return payload.to_trace()
+    except ValueError as exc:  # pragma: no cover - validation surface
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 def _resolve_alignment(params: dict[str, Any]) -> str:
@@ -284,6 +299,60 @@ class VentedRequest(BaseModel):
     drive_voltage: float = Field(2.83, gt=0)
 
 
+class MeasurementData(BaseModel):
+    frequency_hz: list[float] = Field(..., min_items=1)
+    spl_db: list[float] = Field(..., min_items=1)
+    phase_deg: list[float] | None = Field(None)
+    impedance_real: list[float] | None = Field(None)
+    impedance_imag: list[float] | None = Field(None)
+    thd_percent: list[float] | None = Field(None)
+
+    def to_trace(self) -> MeasurementTrace:
+        freq = list(self.frequency_hz)
+        spl = list(self.spl_db)
+        if len(spl) != len(freq):
+            raise ValueError("spl_db length must match frequency axis")
+        phase = list(self.phase_deg) if self.phase_deg is not None else None
+        if phase is not None and len(phase) != len(freq):
+            raise ValueError("phase_deg length must match frequency axis")
+        thd = list(self.thd_percent) if self.thd_percent is not None else None
+        if thd is not None and len(thd) != len(freq):
+            raise ValueError("thd_percent length must match frequency axis")
+        impedance: list[complex] | None = None
+        if (self.impedance_real is None) != (self.impedance_imag is None):
+            raise ValueError("Impedance requires both real and imaginary components")
+        if self.impedance_real is not None and self.impedance_imag is not None:
+            if len(self.impedance_real) != len(freq) or len(self.impedance_imag) != len(freq):
+                raise ValueError("Impedance arrays must match frequency axis")
+            impedance = [
+                complex(float(r), float(i))
+                for r, i in zip(self.impedance_real, self.impedance_imag, strict=True)
+            ]
+        return MeasurementTrace(
+            frequency_hz=freq,
+            spl_db=spl,
+            phase_deg=phase,
+            impedance_ohm=impedance,
+            thd_percent=thd,
+        )
+
+
+class SealedMeasurementRequest(BaseModel):
+    driver: DriverPayload
+    box: BoxPayload
+    measurement: MeasurementData
+    drive_voltage: float = Field(2.83, gt=0)
+    mic_distance_m: float = Field(1.0, gt=0)
+
+
+class VentedMeasurementRequest(BaseModel):
+    driver: DriverPayload
+    box: VentedBoxPayload
+    measurement: MeasurementData
+    drive_voltage: float = Field(2.83, gt=0)
+    mic_distance_m: float = Field(1.0, gt=0)
+
+
 class OptimizationParams(BaseModel):
     targetSpl: float = Field(..., gt=0)
     maxVolume: float = Field(..., gt=0)
@@ -375,6 +444,61 @@ if FastAPI is not None:  # pragma: no branch
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.post("/measurements/preview")
+    async def preview_measurement(file: UploadFile) -> dict[str, Any]:
+        data = await file.read()
+        filename = (file.filename or "").lower()
+        try:
+            if filename.endswith(".mdat"):
+                trace = parse_rew_mdat(data)
+            else:
+                try:
+                    text = data.decode("utf-8")
+                except UnicodeDecodeError:
+                    text = data.decode("latin-1")
+                trace = parse_klippel_dat(text)
+        except Exception as exc:  # pragma: no cover - runtime validation
+            raise HTTPException(status_code=400, detail=f"Failed to parse measurement: {exc}") from exc
+        return {"measurement": trace.to_dict()}
+
+    @app.post("/measurements/sealed/compare")
+    async def compare_sealed_measurement(payload: SealedMeasurementRequest) -> dict[str, Any]:
+        measurement = _measurement_from_payload(payload.measurement)
+        solver = SealedBoxSolver(
+            payload.driver.to_driver(),
+            payload.box.to_box(),
+            drive_voltage=payload.drive_voltage,
+        )
+        response = solver.frequency_response(measurement.frequency_hz, payload.mic_distance_m)
+        summary = solver.alignment_summary(response)
+        predicted = measurement_from_response(response)
+        delta, stats = compare_measurement_to_prediction(measurement, predicted)
+        return {
+            "summary": summary.to_dict(),
+            "prediction": predicted.to_dict(),
+            "delta": delta.to_dict(),
+            "stats": stats.to_dict(),
+        }
+
+    @app.post("/measurements/vented/compare")
+    async def compare_vented_measurement(payload: VentedMeasurementRequest) -> dict[str, Any]:
+        measurement = _measurement_from_payload(payload.measurement)
+        solver = VentedBoxSolver(
+            payload.driver.to_driver(),
+            payload.box.to_box(),
+            drive_voltage=payload.drive_voltage,
+        )
+        response = solver.frequency_response(measurement.frequency_hz, payload.mic_distance_m)
+        summary = solver.alignment_summary(response)
+        predicted = measurement_from_response(response)
+        delta, stats = compare_measurement_to_prediction(measurement, predicted)
+        return {
+            "summary": summary.to_dict(),
+            "prediction": predicted.to_dict(),
+            "delta": delta.to_dict(),
+            "stats": stats.to_dict(),
+        }
 
     @app.post("/simulate/sealed")
     async def simulate_sealed(payload: SealedRequest) -> dict[str, Any]:
