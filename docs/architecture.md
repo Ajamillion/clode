@@ -37,7 +37,7 @@
 - **Modules**:
   - `drivers`: TS parameter ingestion, validation, interpolation (kNN + GP-lite).
   - `mechanics`: Suspension/BL curve estimators with physics-informed regularization.
-  - `acoustics`: Reduced-order box/port solver (lumped + modal extensions) with hooks for FEM/BEM adapters.
+  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed, modal extensions queued) with hooks for FEM/BEM adapters.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis and reciprocity/thermal sanity checks.
 - **API Surface**: Plain Python classes exported through pydantic models; zero global state.

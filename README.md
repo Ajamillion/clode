@@ -7,7 +7,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Delivery roadmap captured in [`docs/delivery-plan.md`](docs/delivery-plan.md)
 - ✅ Frontend + mock backend scaffolding bootstrapped with pnpm workspaces
 - ✅ Solver telemetry HUD with typed WebSocket protocol + GPU.js pressure renderer
-- ✅ Analytical sealed-box solver + FastAPI gateway stub (see [`spl_core`](python/spl_core) and [`services/gateway`](services/gateway))
+- ✅ Analytical sealed + vented-box solvers with FastAPI endpoints (see [`spl_core`](python/spl_core) and [`services/gateway`](services/gateway))
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites
@@ -40,15 +40,15 @@ packages/
 Additional services (gateway, simulation core, CLI) will be added following the blueprint in `docs/architecture.md`.
 
 ## Next Steps
-- Grow the Python simulation core beyond sealed-box alignments (vented boxes, excursion limits, tolerance analysis)
+- Grow the Python simulation core beyond first-order alignments (excursion limits, tolerance analysis)
 - Promote the FastAPI gateway stub into a production-ready service with persistence and WebSocket telemetry
 - Expand the Studio telemetry panels (SPL, impedance, constraint ledger)
 - Wire Playwright/Vitest automation once backend contracts stabilize
 
 ## Python Simulation Core
 
-The analytical sealed-box solver lives in the [`spl_core`](python/spl_core) package
-and is exposed via a lightweight FastAPI gateway stub in
+The analytical sealed- and vented-box solvers live in the [`spl_core`](python/spl_core) package
+and are exposed via a lightweight FastAPI gateway stub in
 [`services/gateway`](services/gateway). Run the Python unit tests with:
 
 ```bash

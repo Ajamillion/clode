@@ -92,8 +92,8 @@ preserving the long-term vision.
 ## 4. Near-Term Backlog (Next Iterations)
 
 1. **Simulation Core Expansion**
-   - Extend `spl_core` with vented alignment support, compliance-curve fitting,
-     and excursion limit estimation.
+   - ✅ Extend `spl_core` with vented alignment support exposed via the gateway.
+   - Add compliance-curve fitting and excursion limit estimation.
    - Add JSON schema export for solver inputs/outputs.
 2. **Gateway Evolution**
    - Replace optional FastAPI shim with concrete app, including async task
