@@ -54,6 +54,8 @@ class VentedBoxSolverTest(unittest.TestCase):
         self.assertLess(spl_low, spl_high)
         self.assertLess(abs(spl_mid - spl_low), 12.0)
 
+        self.assertIn("port_velocity_ms", response.to_dict())
+
     def test_impedance_double_peak(self) -> None:
         freqs = [float(f) for f in range(20, 151, 5)]
         response = self.solver.frequency_response(freqs)
@@ -70,6 +72,21 @@ class VentedBoxSolverTest(unittest.TestCase):
                 peak_count += 1
 
         self.assertGreaterEqual(peak_count, 2)
+
+    def test_alignment_summary_port_metrics(self) -> None:
+        freqs = [float(f) for f in range(18, 181, 2)]
+        response = self.solver.frequency_response(freqs)
+        summary = self.solver.alignment_summary(response)
+
+        self.assertAlmostEqual(summary.fb_hz, self.solver.tuning_frequency(), places=6)
+        self.assertIsNotNone(summary.f3_low_hz)
+        self.assertIsNotNone(summary.f3_high_hz)
+        self.assertGreater(summary.max_port_velocity_ms, 0.0)
+        self.assertGreater(summary.max_cone_velocity_ms, 0.0)
+        self.assertGreater(summary.max_spl_db, response.spl_db[0])
+
+        summary_dict = summary.to_dict()
+        self.assertIn("max_port_velocity_ms", summary_dict)
 
 
 if __name__ == "__main__":

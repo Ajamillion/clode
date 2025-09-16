@@ -8,6 +8,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Frontend + mock backend scaffolding bootstrapped with pnpm workspaces
 - ✅ Solver telemetry HUD with typed WebSocket protocol + GPU.js pressure renderer
 - ✅ Analytical sealed + vented-box solvers with FastAPI endpoints (see [`spl_core`](python/spl_core) and [`services/gateway`](services/gateway))
+- ✅ Alignment summary metrics (-3 dB bandwidth, velocity peaks) exposed alongside solver responses
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites

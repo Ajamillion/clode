@@ -13,6 +13,7 @@ from math import log10, pi, sqrt
 from typing import Iterable, List
 
 from ..drivers import AIR_DENSITY, BoxDesign, DriverParameters
+from ._utils import find_band_edges
 
 P_REF = 20e-6  # 20 µPa reference pressure for SPL
 
@@ -25,6 +26,39 @@ class SealedBoxResponse:
     spl_db: List[float]
     impedance_ohm: List[complex]
     cone_velocity_ms: List[float]
+
+    def to_dict(self) -> dict[str, List[float]]:
+        """Return a JSON-serialisable representation of the response."""
+
+        return {
+            "frequency_hz": list(self.frequency_hz),
+            "spl_db": list(self.spl_db),
+            "impedance_real": [float(z.real) for z in self.impedance_ohm],
+            "impedance_imag": [float(z.imag) for z in self.impedance_ohm],
+            "cone_velocity_ms": list(self.cone_velocity_ms),
+        }
+
+
+@dataclass(slots=True)
+class SealedAlignmentSummary:
+    """Key figures of merit describing a sealed alignment."""
+
+    fc_hz: float
+    qtc: float
+    f3_low_hz: float | None
+    f3_high_hz: float | None
+    max_spl_db: float
+    max_cone_velocity_ms: float
+
+    def to_dict(self) -> dict[str, float | None]:
+        return {
+            "fc_hz": self.fc_hz,
+            "qtc": self.qtc,
+            "f3_low_hz": self.f3_low_hz,
+            "f3_high_hz": self.f3_high_hz,
+            "max_spl_db": self.max_spl_db,
+            "max_cone_velocity_ms": self.max_cone_velocity_ms,
+        }
 
 
 class SealedBoxSolver:
@@ -92,3 +126,22 @@ class SealedBoxSolver:
             vel_list.append(abs(velocity))
 
         return SealedBoxResponse(freq_list, spl_list, imp_list, vel_list)
+
+    def alignment_summary(self, response: SealedBoxResponse) -> SealedAlignmentSummary:
+        """Derive key alignment metrics from a previously computed response."""
+
+        max_spl = max(response.spl_db, default=0.0)
+        f3_low, f3_high = find_band_edges(response.frequency_hz, response.spl_db, 3.0)
+        max_velocity = max(response.cone_velocity_ms, default=0.0)
+
+        return SealedAlignmentSummary(
+            fc_hz=self.system_resonance(),
+            qtc=self.system_qtc(),
+            f3_low_hz=f3_low,
+            f3_high_hz=f3_high,
+            max_spl_db=max_spl,
+            max_cone_velocity_ms=max_velocity,
+        )
+
+
+__all__ = ["SealedBoxSolver", "SealedBoxResponse", "SealedAlignmentSummary"]

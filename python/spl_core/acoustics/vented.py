@@ -8,6 +8,7 @@ from typing import Iterable, List
 
 from ..drivers import AIR_DENSITY, DriverParameters, PortGeometry, VentedBoxDesign
 from .sealed import P_REF
+from ._utils import find_band_edges
 
 
 @dataclass(slots=True)
@@ -19,6 +20,38 @@ class VentedBoxResponse:
     impedance_ohm: List[complex]
     cone_velocity_ms: List[float]
     port_air_velocity_ms: List[float]
+
+    def to_dict(self) -> dict[str, List[float]]:
+        return {
+            "frequency_hz": list(self.frequency_hz),
+            "spl_db": list(self.spl_db),
+            "impedance_real": [float(z.real) for z in self.impedance_ohm],
+            "impedance_imag": [float(z.imag) for z in self.impedance_ohm],
+            "cone_velocity_ms": list(self.cone_velocity_ms),
+            "port_velocity_ms": list(self.port_air_velocity_ms),
+        }
+
+
+@dataclass(slots=True)
+class VentedAlignmentSummary:
+    """Key figures describing the vented system alignment."""
+
+    fb_hz: float
+    f3_low_hz: float | None
+    f3_high_hz: float | None
+    max_spl_db: float
+    max_cone_velocity_ms: float
+    max_port_velocity_ms: float
+
+    def to_dict(self) -> dict[str, float | None]:
+        return {
+            "fb_hz": self.fb_hz,
+            "f3_low_hz": self.f3_low_hz,
+            "f3_high_hz": self.f3_high_hz,
+            "max_spl_db": self.max_spl_db,
+            "max_cone_velocity_ms": self.max_cone_velocity_ms,
+            "max_port_velocity_ms": self.max_port_velocity_ms,
+        }
 
 
 class VentedBoxSolver:
@@ -110,5 +143,20 @@ class VentedBoxSolver:
 
         return VentedBoxResponse(freq_list, spl_list, imp_list, cone_vel_list, port_vel_list)
 
+    def alignment_summary(self, response: VentedBoxResponse) -> VentedAlignmentSummary:
+        max_spl = max(response.spl_db, default=0.0)
+        f3_low, f3_high = find_band_edges(response.frequency_hz, response.spl_db, 3.0)
+        max_cone_velocity = max(response.cone_velocity_ms, default=0.0)
+        max_port_velocity = max(response.port_air_velocity_ms, default=0.0)
 
-__all__ = ["VentedBoxSolver", "VentedBoxResponse"]
+        return VentedAlignmentSummary(
+            fb_hz=self.tuning_frequency(),
+            f3_low_hz=f3_low,
+            f3_high_hz=f3_high,
+            max_spl_db=max_spl,
+            max_cone_velocity_ms=max_cone_velocity,
+            max_port_velocity_ms=max_port_velocity,
+        )
+
+
+__all__ = ["VentedBoxSolver", "VentedBoxResponse", "VentedAlignmentSummary"]

@@ -114,15 +114,16 @@ if FastAPI is not None:  # pragma: no branch
             drive_voltage=payload.drive_voltage,
         )
         response = solver.frequency_response(payload.frequencies_hz, payload.mic_distance_m)
-        return {
-            "frequency_hz": response.frequency_hz,
-            "spl_db": response.spl_db,
-            "impedance_real": [float(z.real) for z in response.impedance_ohm],
-            "impedance_imag": [float(z.imag) for z in response.impedance_ohm],
-            "cone_velocity_ms": response.cone_velocity_ms,
-            "fc_hz": solver.system_resonance(),
-            "qtc": solver.system_qtc(),
-        }
+        summary = solver.alignment_summary(response)
+        payload_dict = response.to_dict()
+        payload_dict.update(
+            {
+                "summary": summary.to_dict(),
+                "fc_hz": summary.fc_hz,
+                "qtc": summary.qtc,
+            }
+        )
+        return payload_dict
 
     @app.post("/simulate/vented")
     async def simulate_vented(payload: VentedRequest) -> dict[str, List[float]]:
@@ -132,15 +133,16 @@ if FastAPI is not None:  # pragma: no branch
             drive_voltage=payload.drive_voltage,
         )
         response = solver.frequency_response(payload.frequencies_hz, payload.mic_distance_m)
-        return {
-            "frequency_hz": response.frequency_hz,
-            "spl_db": response.spl_db,
-            "impedance_real": [float(z.real) for z in response.impedance_ohm],
-            "impedance_imag": [float(z.imag) for z in response.impedance_ohm],
-            "cone_velocity_ms": response.cone_velocity_ms,
-            "port_velocity_ms": response.port_air_velocity_ms,
-            "fb_hz": solver.tuning_frequency(),
-        }
+        summary = solver.alignment_summary(response)
+        payload_dict = response.to_dict()
+        payload_dict.update(
+            {
+                "summary": summary.to_dict(),
+                "fb_hz": summary.fb_hz,
+                "max_port_velocity_ms": summary.max_port_velocity_ms,
+            }
+        )
+        return payload_dict
 else:  # pragma: no cover
     app = None  # type: ignore
 

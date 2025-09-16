@@ -45,6 +45,7 @@
 ### 4.2 Simulation Gateway (`services/gateway`)
 - FastAPI app that:
   - Exposes REST endpoints for job submission, driver queries, exports.
+  - Returns alignment summaries (Fc/Qtc, Fb, -3 dB edges, velocity peaks) alongside solver traces.
   - Hosts WebSocket streams for live optimization telemetry (iterations, constraint hits, topology swaps).
   - Manages run lifecycle (start, pause, resume, cancel) with async tasks.
   - Persists run inputs/outputs in SQLite using SQLModel.

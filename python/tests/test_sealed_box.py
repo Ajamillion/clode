@@ -50,6 +50,25 @@ class SealedBoxSolverTest(unittest.TestCase):
         z_mag = abs(response.impedance_ohm[1])
         self.assertGreater(z_mag, self.driver.re_ohm)
 
+        as_dict = response.to_dict()
+        self.assertIn("impedance_real", as_dict)
+        self.assertEqual(len(as_dict["impedance_real"]), len(freqs))
+
+    def test_alignment_summary_band_edges(self) -> None:
+        freqs = [float(f) for f in range(10, 201, 2)]
+        response = self.solver.frequency_response(freqs)
+        summary = self.solver.alignment_summary(response)
+
+        self.assertIsNotNone(summary.f3_low_hz)
+        self.assertIsNotNone(summary.f3_high_hz)
+        self.assertLess(summary.f3_low_hz, summary.fc_hz)
+        self.assertGreater(summary.f3_high_hz, summary.fc_hz)
+        self.assertGreater(summary.max_spl_db, response.spl_db[0])
+        self.assertGreater(summary.max_cone_velocity_ms, 0.0)
+
+        summary_dict = summary.to_dict()
+        self.assertAlmostEqual(summary_dict["fc_hz"], summary.fc_hz, places=6)
+
 
 if __name__ == "__main__":
     unittest.main()

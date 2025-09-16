@@ -89,6 +89,12 @@ preserving the long-term vision.
 | **M3 – High-Fidelity Solvers** | Month 6 | FEM/BEM coupling prototype, nonlinear extensions, Monte Carlo tolerance engine, Playwright + pytest integration tests, Docker Compose deployment. |
 | **M4 – Platform Hardening** | Month 9 | Cloud orchestration, offline cache packaging, metamaterial/active modules behind feature flags, observability dashboards, documentation for v1.0 release. |
 
+## Progress Snapshot (Iteration 7)
+
+- **Milestone M1 – Foundations:** ~90 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, and the Studio HUD are live; CI automation is the final outstanding item.
+- **Milestone M2 – Optimisation Loop:** ~10 % complete. Telemetry HUD groundwork and solver response summaries prepare the optimisation ledger planned for this milestone.
+- **Overall programme:** ≈25 % toward the v1.0 roadmap ((0.90 + 0.10 + 0 + 0) ÷ 4 milestones).
+
 ## 4. Near-Term Backlog (Next Iterations)
 
 1. **Simulation Core Expansion**
