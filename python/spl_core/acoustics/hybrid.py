@@ -29,7 +29,10 @@ from .sealed import P_REF
 
 @dataclass(slots=True)
 class HybridFieldSnapshot:
-    """Snapshot of the interior pressure field at a single frequency."""
+    """Snapshot of the interior pressure field at a single frequency.
+
+    All pressure magnitudes are stored as RMS values expressed in Pascals.
+    """
 
     frequency_hz: float
     grid_resolution: int
@@ -79,7 +82,7 @@ class HybridSolverResult:
 
 @dataclass(slots=True)
 class HybridSolverSummary:
-    """Aggregated metrics describing the hybrid solver run."""
+    """Aggregated RMS metrics describing the hybrid solver run."""
 
     max_internal_pressure_pa: float
     mean_internal_pressure_pa: float
@@ -194,9 +197,9 @@ class HybridBoxSolver:
         port_velocity: list[float] = []
         snapshots: list[HybridFieldSnapshot] = []
 
-        total_pressure = 0.0
+        total_pressure_rms = 0.0
         total_cells = 0
-        max_pressure = 0.0
+        max_pressure_rms = 0.0
         max_port_velocity = 0.0
         max_port_mach = 0.0
 
@@ -251,16 +254,16 @@ class HybridBoxSolver:
             cone_velocity.append(abs(cone_vel))
             port_velocity.append(port_vel or 0.0)
 
-            total_pressure += sum(field)
+            total_pressure_rms += sum(field)
             total_cells += len(field)
-            max_pressure = max(max_pressure, max_field_pressure)
+            max_pressure_rms = max(max_pressure_rms, max_field_pressure)
             if port_vel is not None:
                 max_port_velocity = max(max_port_velocity, port_vel)
                 max_port_mach = max(max_port_mach, port_vel / SPEED_OF_SOUND)
 
-        mean_pressure = total_pressure / total_cells if total_cells else 0.0
+        mean_pressure = total_pressure_rms / total_cells if total_cells else 0.0
         summary = HybridSolverSummary(
-            max_internal_pressure_pa=max_pressure,
+            max_internal_pressure_pa=max_pressure_rms,
             mean_internal_pressure_pa=mean_pressure,
             max_port_velocity_ms=max_port_velocity if self._mode == "vented" else None,
             max_port_mach=max_port_mach if self._mode == "vented" else None,
@@ -372,12 +375,13 @@ class HybridBoxSolver:
                 cardioid=0.45,
             )
 
+        sqrt_two = sqrt(2.0)
         field: list[float] = []
         for x, y, z in self._grid_points:
             pressure = self._source_pressure(driver_source, x, y, z, omega, k)
             if port_source is not None:
                 pressure += self._source_pressure(port_source, x, y, z, omega, k)
-            field.append(abs(pressure))
+            field.append(abs(pressure) / sqrt_two)
         return field
 
     def _source_pressure(
