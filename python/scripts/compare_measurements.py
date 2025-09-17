@@ -90,6 +90,12 @@ def _format_float(value: float | None) -> str:
     return f"{value:.2f}"
 
 
+def _format_percent(value: float | None) -> str:
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return "–"
+    return f"{value * 100:+.1f}%"
+
+
 def _write_json(path: pathlib.Path | None, payload: dict[str, object], pretty: bool) -> None:
     if path is None:
         return
@@ -127,6 +133,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON outputs")
     parser.add_argument("--stats-output", type=pathlib.Path, help="Write aggregated stats to a JSON file")
     parser.add_argument("--delta-output", type=pathlib.Path, help="Write per-frequency deltas to a JSON file")
+    parser.add_argument(
+        "--diagnosis-output",
+        type=pathlib.Path,
+        help="Write systematic error diagnosis to a JSON file",
+    )
     return parser
 
 
@@ -141,6 +152,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     axis = _response_axis(measurement)
 
     solver: SealedBoxSolver | VentedBoxSolver
+    port_length_m: float | None = None
 
     if args.alignment == "sealed":
         solver = _build_sealed_solver(args.volume, args.leakage_q, args.drive_voltage)
@@ -155,17 +167,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             flare_factor=args.flare_factor,
             port_loss_q=args.port_loss_q,
         )
+        port_length_m = solver.box.port.length_m
 
     prediction = measurement_from_response(solver.frequency_response(axis, 1.0))
-    delta, stats = compare_measurement_to_prediction(measurement, prediction)
+    delta, stats, diagnosis = compare_measurement_to_prediction(
+        measurement,
+        prediction,
+        port_length_m=port_length_m,
+    )
 
     _write_json(args.delta_output, delta.to_dict(), args.pretty)
     _write_json(args.stats_output, stats.to_dict(), args.pretty)
+    _write_json(args.diagnosis_output, diagnosis.to_dict(), args.pretty)
 
     if args.json:
         payload = {
             "alignment": args.alignment,
             "stats": stats.to_dict(),
+            "diagnosis": diagnosis.to_dict(),
         }
         print(json.dumps(payload, indent=2 if args.pretty else None))
     else:
@@ -176,6 +195,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Max SPL delta: {_format_float(stats.max_spl_delta_db)} dB")
         print(f"Phase RMSE: {_format_float(stats.phase_rmse_deg)} °")
         print(f"Impedance RMSE: {_format_float(stats.impedance_mag_rmse_ohm)} Ω")
+        print(f"Level trim suggestion: {_format_float(diagnosis.recommended_level_trim_db)} dB")
+        print(f"Low-band bias: {_format_float(diagnosis.low_band_bias_db)} dB")
+        print(f"Mid-band bias: {_format_float(diagnosis.mid_band_bias_db)} dB")
+        print(f"High-band bias: {_format_float(diagnosis.high_band_bias_db)} dB")
+        print(f"Tuning shift: {_format_float(diagnosis.tuning_shift_hz)} Hz")
+        if diagnosis.recommended_port_length_m is not None:
+            percent_delta = (
+                diagnosis.recommended_port_length_scale - 1.0
+                if diagnosis.recommended_port_length_scale is not None
+                else None
+            )
+            print(
+                "Port length adjustment: "
+                f"{_format_float(diagnosis.recommended_port_length_m)} m"
+                f" ({_format_percent(percent_delta)})"
+            )
+        else:
+            print("Port length adjustment: –")
+        if diagnosis.leakage_hint:
+            hint = "Decrease leakage Q" if diagnosis.leakage_hint == "lower_q" else "Increase leakage Q"
+            print(f"Leakage hint: {hint}")
+        else:
+            print("Leakage hint: –")
+        if diagnosis.notes:
+            print("Notes:")
+            for note in diagnosis.notes:
+                print(f"  • {note}")
 
     return 0
 

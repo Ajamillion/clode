@@ -12,7 +12,10 @@ from spl_core import (
     BoxDesign,
     DriverParameters,
     MeasurementTrace,
+    PortGeometry,
     SealedBoxSolver,
+    VentedBoxDesign,
+    VentedBoxSolver,
     compare_measurement_to_prediction,
     measurement_from_response,
     parse_klippel_dat,
@@ -80,7 +83,7 @@ class MeasurementComparisonTests(unittest.TestCase):
         self.prediction = measurement_from_response(response)
 
     def test_compare_identical_trace(self) -> None:
-        delta, stats = compare_measurement_to_prediction(self.prediction, self.prediction)
+        delta, stats, diagnosis = compare_measurement_to_prediction(self.prediction, self.prediction)
         self.assertIsNotNone(stats.spl_rmse_db)
         assert stats.spl_rmse_db is not None
         self.assertLess(stats.spl_rmse_db, 1e-6)
@@ -90,6 +93,9 @@ class MeasurementComparisonTests(unittest.TestCase):
         self.assertIsNotNone(delta.spl_delta_db)
         assert delta.spl_delta_db is not None
         self.assertTrue(all(abs(v) < 1e-6 for v in delta.spl_delta_db))
+        self.assertIsNotNone(diagnosis.overall_bias_db)
+        self.assertAlmostEqual(diagnosis.overall_bias_db or 0.0, 0.0, places=6)
+        self.assertEqual(diagnosis.notes, [])
 
     def test_compare_with_offset_and_interpolation(self) -> None:
         measurement_axis = [22.0, 51.0, 88.0, 140.0]
@@ -100,7 +106,7 @@ class MeasurementComparisonTests(unittest.TestCase):
             spl_db=[value + 0.8 for value in resampled.spl_db],
             impedance_ohm=[complex(abs(z) * 1.05, 0.0) for z in resampled.impedance_ohm or []] or None,
         )
-        delta, stats = compare_measurement_to_prediction(measurement, self.prediction)
+        delta, stats, diagnosis = compare_measurement_to_prediction(measurement, self.prediction)
         assert stats.spl_rmse_db is not None
         self.assertAlmostEqual(stats.spl_rmse_db, 0.8, places=2)
         assert stats.spl_bias_db is not None
@@ -109,6 +115,57 @@ class MeasurementComparisonTests(unittest.TestCase):
         self.assertGreater(stats.max_spl_delta_db, 0.7)
         assert delta.spl_delta_db is not None
         self.assertTrue(all(math.isclose(v, 0.8, rel_tol=1e-3) for v in delta.spl_delta_db))
+        self.assertIsNotNone(diagnosis.recommended_level_trim_db)
+        assert diagnosis.recommended_level_trim_db is not None
+        self.assertAlmostEqual(diagnosis.recommended_level_trim_db, -0.8, places=2)
+        self.assertIn('level', ' '.join(diagnosis.notes or []).lower())
+
+    def test_compare_diagnosis_suggests_port_and_leakage_adjustments(self) -> None:
+        vented_solver = VentedBoxSolver(
+            self.driver,
+            VentedBoxDesign(
+                volume_l=62.0,
+                leakage_q=12.0,
+                port=PortGeometry(diameter_m=0.11, length_m=0.24, count=1, flare_factor=1.6, loss_q=16.0),
+            ),
+        )
+        frequencies = [18.0 + i * 4.0 for i in range(25)]
+        response = vented_solver.frequency_response(frequencies)
+        prediction = measurement_from_response(response)
+        assert prediction.spl_db is not None
+        base_spl = list(prediction.spl_db)
+        modified_spl = base_spl[:]
+        peak_idx = max(range(len(base_spl)), key=base_spl.__getitem__)
+        if peak_idx + 1 < len(modified_spl):
+            modified_spl[peak_idx + 1] += 1.8
+            modified_spl[peak_idx] -= 0.6
+        elif peak_idx > 0:
+            modified_spl[peak_idx - 1] += 1.8
+            modified_spl[peak_idx] -= 0.6
+        for idx, freq in enumerate(prediction.frequency_hz):
+            if freq < 35.0:
+                modified_spl[idx] -= 2.5
+        measurement = MeasurementTrace(
+            frequency_hz=list(prediction.frequency_hz),
+            spl_db=modified_spl,
+            impedance_ohm=prediction.impedance_ohm,
+        )
+        _, _, diagnosis = compare_measurement_to_prediction(
+            measurement,
+            prediction,
+            port_length_m=vented_solver.box.port.length_m,
+        )
+        self.assertIsNotNone(diagnosis.tuning_shift_hz)
+        assert diagnosis.tuning_shift_hz is not None
+        self.assertNotAlmostEqual(diagnosis.tuning_shift_hz, 0.0, places=2)
+        self.assertIsNotNone(diagnosis.recommended_port_length_scale)
+        assert diagnosis.recommended_port_length_scale is not None
+        if diagnosis.tuning_shift_hz > 0:
+            self.assertLess(diagnosis.recommended_port_length_scale, 1.0)
+        else:
+            self.assertGreater(diagnosis.recommended_port_length_scale, 1.0)
+        self.assertEqual(diagnosis.leakage_hint, 'lower_q')
+        self.assertTrue(diagnosis.notes)
 
 
 if __name__ == "__main__":  # pragma: no cover

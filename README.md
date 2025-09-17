@@ -19,6 +19,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Studio tolerance panel streaming Monte Carlo excursion/velocity risk snapshots from the gateway
 - ✅ Measurement ingestion scaffolding with Klippel/REW parsers and FastAPI comparison endpoints for SPL/impedance deltas
 - ✅ Studio measurement panel that previews uploads or synthesised traces and compares SPL/impedance deltas against solver predictions
+- ✅ Measurement diagnostics that suggest level trims, leakage adjustments, and port retunes from solver/field deltas
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
@@ -102,7 +103,9 @@ Use the new `compare_measurements.py` script to benchmark field measurements aga
 
 ```bash
 pnpm py:compare -- path/to/measurement.mdat --alignment vented --volume 62 --drive-voltage 2.83 \
-  --stats-output ./stats.json --delta-output ./delta.json
+  --stats-output ./stats.json --delta-output ./delta.json --diagnosis-output ./diagnosis.json
 ```
 
 The command prints a human-readable summary by default; pass `--json` for machine-readable output. Optional flags mirror the gateway defaults so Studio results and CLI analyses stay aligned.
+
+Diagnosis output highlights systematic biases: low/mid/high-band SPL offsets, suggested global level trims, tuning shifts with estimated port-length adjustments, leakage hints, and a note stack summarising the most actionable insights.

@@ -20,6 +20,7 @@ from .drivers import (
 )
 from .measurements import (
     MeasurementDelta,
+    MeasurementDiagnosis,
     MeasurementStats,
     MeasurementTrace,
     compare_measurement_to_prediction,
@@ -74,6 +75,7 @@ __all__ = [
     "MeasurementTrace",
     "MeasurementDelta",
     "MeasurementStats",
+    "MeasurementDiagnosis",
     "parse_klippel_dat",
     "parse_rew_mdat",
     "measurement_from_response",

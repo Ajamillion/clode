@@ -527,6 +527,23 @@ canvas {
   gap: 0.25rem;
 }
 
+.measurement__notes {
+  grid-column: 1 / -1;
+}
+
+.measurement__notes ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: #e2e8f0;
+}
+
+.measurement__notes li::marker {
+  color: #38bdf8;
+}
+
 .measurement__highlights dt {
   font-size: 0.64rem;
   text-transform: uppercase;

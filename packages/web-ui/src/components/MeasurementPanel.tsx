@@ -28,9 +28,33 @@ function formatDecibel(value: number | null | undefined) {
   return `${value.toFixed(2)} dB`
 }
 
+function formatPercent(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  const percent = value * 100
+  const sign = percent > 0 ? '+' : percent < 0 ? '−' : ''
+  const abs = Math.abs(percent)
+  const precision = abs < 10 ? 1 : 0
+  return `${sign}${abs.toFixed(precision)}%`
+}
+
 function formatVoltage(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return '—'
   return `${value.toFixed(2)} V`
+}
+
+function formatFrequencyDelta(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  const sign = value > 0 ? '+' : value < 0 ? '−' : ''
+  const abs = Math.abs(value)
+  if (abs >= 1000) return `${sign}${(abs / 1000).toFixed(2)} kHz`
+  return `${sign}${abs.toFixed(2)} Hz`
+}
+
+function formatLength(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  if (value >= 1) return `${value.toFixed(2)} m`
+  if (value >= 0.1) return `${(value * 100).toFixed(1)} cm`
+  return `${(value * 1000).toFixed(0)} mm`
 }
 
 function formatRelative(timestamp: number | null) {
@@ -96,45 +120,52 @@ export function MeasurementPanel() {
 
   const measurementSummary = useMemo(() => summariseMeasurement(preview), [preview])
 
-  const statsEntries = useMemo(() => {
-    const stats = comparison?.stats
-    if (!stats) return []
+  const highlightEntries = useMemo(() => {
     const entries: { label: string; value: string }[] = []
-    if (stats.spl_rmse_db != null) {
-      entries.push({ label: 'SPL RMSE', value: formatDecibel(stats.spl_rmse_db) })
+    const stats = comparison?.stats
+    if (stats) {
+      if (stats.spl_rmse_db != null) entries.push({ label: 'SPL RMSE', value: formatDecibel(stats.spl_rmse_db) })
+      if (stats.spl_bias_db != null) entries.push({ label: 'SPL bias', value: formatDecibel(stats.spl_bias_db) })
+      if (stats.max_spl_delta_db != null) entries.push({ label: 'Worst delta', value: formatDecibel(stats.max_spl_delta_db) })
+      if (stats.phase_rmse_deg != null) entries.push({ label: 'Phase RMSE', value: `${stats.phase_rmse_deg.toFixed(2)}°` })
+      if (stats.impedance_mag_rmse_ohm != null) entries.push({ label: 'Impedance RMSE', value: `${stats.impedance_mag_rmse_ohm.toFixed(2)} Ω` })
     }
-    if (stats.spl_bias_db != null) {
-      entries.push({ label: 'SPL bias', value: formatDecibel(stats.spl_bias_db) })
+    const summary = comparison?.summary
+    if (summary) {
+      if (summary.max_spl_db != null) entries.push({ label: 'Predicted SPL', value: formatDecibel(summary.max_spl_db) })
+      if (summary.safe_drive_voltage_v != null) entries.push({ label: 'Safe drive', value: formatVoltage(summary.safe_drive_voltage_v) })
+      if (summary.excursion_headroom_db != null) entries.push({ label: 'Excursion headroom', value: formatDecibel(summary.excursion_headroom_db) })
+      if (summary.fb_hz != null) entries.push({ label: 'Fb', value: formatFrequency(summary.fb_hz) })
     }
-    if (stats.max_spl_delta_db != null) {
-      entries.push({ label: 'Worst delta', value: formatDecibel(stats.max_spl_delta_db) })
-    }
-    if (stats.phase_rmse_deg != null) {
-      entries.push({ label: 'Phase RMSE', value: `${stats.phase_rmse_deg.toFixed(2)}°` })
-    }
-    if (stats.impedance_mag_rmse_ohm != null) {
-      entries.push({ label: 'Impedance RMSE', value: `${stats.impedance_mag_rmse_ohm.toFixed(2)} Ω` })
+    const diagnosis = comparison?.diagnosis
+    if (diagnosis) {
+      if (diagnosis.recommended_level_trim_db != null) {
+        entries.push({ label: 'Level trim', value: formatDecibel(diagnosis.recommended_level_trim_db) })
+      }
+      if (diagnosis.tuning_shift_hz != null) {
+        entries.push({ label: 'Tuning shift', value: formatFrequencyDelta(diagnosis.tuning_shift_hz) })
+      }
+      if (diagnosis.recommended_port_length_m != null) {
+        const delta = diagnosis.recommended_port_length_scale != null ? diagnosis.recommended_port_length_scale - 1 : null
+        entries.push({
+          label: 'Port length',
+          value: `${formatLength(diagnosis.recommended_port_length_m)} (${formatPercent(delta)})`,
+        })
+      }
+      if (diagnosis.leakage_hint) {
+        entries.push({
+          label: 'Leakage',
+          value: diagnosis.leakage_hint === 'lower_q' ? 'Reduce leakage Q' : 'Increase leakage Q',
+        })
+      }
     }
     return entries
   }, [comparison])
 
-  const summaryEntries = useMemo(() => {
-    const summary = comparison?.summary
-    if (!summary) return []
-    const entries: { label: string; value: string }[] = []
-    if (summary.max_spl_db != null) {
-      entries.push({ label: 'Predicted SPL', value: formatDecibel(summary.max_spl_db) })
-    }
-    if (summary.safe_drive_voltage_v != null) {
-      entries.push({ label: 'Safe drive', value: formatVoltage(summary.safe_drive_voltage_v) })
-    }
-    if (summary.excursion_headroom_db != null) {
-      entries.push({ label: 'Excursion headroom', value: formatDecibel(summary.excursion_headroom_db) })
-    }
-    if (summary.fb_hz != null) {
-      entries.push({ label: 'Fb', value: formatFrequency(summary.fb_hz) })
-    }
-    return entries
+  const diagnosisNotes = useMemo(() => {
+    const notes = comparison?.diagnosis?.notes
+    if (!notes) return []
+    return notes.map((note) => String(note)).filter((note) => note.length > 0)
   }, [comparison])
 
   const canCompare = !!preview && run?.status === 'succeeded'
@@ -210,20 +241,26 @@ export function MeasurementPanel() {
                   <dd>{formatRelative(lastComparedAt)}</dd>
                 </div>
               </dl>
-              {(statsEntries.length > 0 || summaryEntries.length > 0) && (
+              {(highlightEntries.length > 0 || diagnosisNotes.length > 0) && (
                 <div className="measurement__highlights">
-                  {statsEntries.map((entry) => (
+                  {highlightEntries.map((entry) => (
                     <div key={entry.label}>
                       <dt>{entry.label}</dt>
                       <dd>{entry.value}</dd>
                     </div>
                   ))}
-                  {summaryEntries.map((entry) => (
-                    <div key={entry.label}>
-                      <dt>{entry.label}</dt>
-                      <dd>{entry.value}</dd>
+                  {diagnosisNotes.length > 0 && (
+                    <div className="measurement__notes">
+                      <dt>Insights</dt>
+                      <dd>
+                        <ul>
+                          {diagnosisNotes.map((note, idx) => (
+                            <li key={`${idx}-${note}`}>{note}</li>
+                          ))}
+                        </ul>
+                      </dd>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
               <button type="button" className="measurement__clear" onClick={() => clearComparison()}>

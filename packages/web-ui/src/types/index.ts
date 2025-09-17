@@ -111,9 +111,23 @@ export type MeasurementStats = {
   impedance_mag_rmse_ohm?: number | null
 }
 
+export type MeasurementDiagnosis = {
+  overall_bias_db?: number | null
+  recommended_level_trim_db?: number | null
+  low_band_bias_db?: number | null
+  mid_band_bias_db?: number | null
+  high_band_bias_db?: number | null
+  tuning_shift_hz?: number | null
+  recommended_port_length_m?: number | null
+  recommended_port_length_scale?: number | null
+  leakage_hint?: 'lower_q' | 'raise_q' | null
+  notes?: string[]
+}
+
 export type MeasurementComparison = {
   summary?: Record<string, number | null>
   prediction?: MeasurementTrace | null
   delta?: MeasurementDelta | null
   stats?: MeasurementStats | null
+  diagnosis?: MeasurementDiagnosis | null
 }

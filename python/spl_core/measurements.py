@@ -113,6 +113,36 @@ class MeasurementStats:
         }
 
 
+@dataclass(slots=True)
+class MeasurementDiagnosis:
+    """Heuristic suggestions derived from measurement deltas."""
+
+    overall_bias_db: float | None
+    recommended_level_trim_db: float | None
+    low_band_bias_db: float | None
+    mid_band_bias_db: float | None
+    high_band_bias_db: float | None
+    tuning_shift_hz: float | None
+    recommended_port_length_m: float | None
+    recommended_port_length_scale: float | None
+    leakage_hint: str | None
+    notes: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "overall_bias_db": self.overall_bias_db,
+            "recommended_level_trim_db": self.recommended_level_trim_db,
+            "low_band_bias_db": self.low_band_bias_db,
+            "mid_band_bias_db": self.mid_band_bias_db,
+            "high_band_bias_db": self.high_band_bias_db,
+            "tuning_shift_hz": self.tuning_shift_hz,
+            "recommended_port_length_m": self.recommended_port_length_m,
+            "recommended_port_length_scale": self.recommended_port_length_scale,
+            "leakage_hint": self.leakage_hint,
+            "notes": list(self.notes),
+        }
+
+
 def measurement_from_response(response: SealedBoxResponse | VentedBoxResponse) -> MeasurementTrace:
     return MeasurementTrace(
         frequency_hz=list(response.frequency_hz),
@@ -226,7 +256,9 @@ def parse_rew_mdat(payload: bytes | bytearray | str | TextIO) -> MeasurementTrac
 def compare_measurement_to_prediction(
     measurement: MeasurementTrace,
     prediction: MeasurementTrace,
-) -> tuple[MeasurementDelta, MeasurementStats]:
+    *,
+    port_length_m: float | None = None,
+) -> tuple[MeasurementDelta, MeasurementStats, MeasurementDiagnosis]:
     if not measurement.frequency_hz:
         raise ValueError("Measurement trace is empty")
     prediction_resampled = prediction.resample(measurement.frequency_hz)
@@ -252,7 +284,14 @@ def compare_measurement_to_prediction(
         phase_delta_deg=phase_delta,
         impedance_delta_ohm=impedance_delta,
     )
-    return delta, stats
+    diagnosis = _diagnose_bias(
+        measurement.frequency_hz,
+        spl_delta,
+        measurement.spl_db,
+        prediction_resampled.spl_db,
+        port_length_m=port_length_m,
+    )
+    return delta, stats, diagnosis
 
 
 # --- helpers -----------------------------------------------------------------
@@ -365,10 +404,130 @@ def _max_abs(values: Sequence[float] | None) -> float | None:
     return max(valid)
 
 
+def _band_mean(
+    frequency: Sequence[float],
+    values: Sequence[float] | None,
+    *,
+    low: float | None,
+    high: float | None,
+) -> float | None:
+    if values is None:
+        return None
+    acc: list[float] = []
+    for f, value in zip(frequency, values, strict=True):
+        if math.isnan(value):
+            continue
+        if low is not None and f < low:
+            continue
+        if high is not None and f >= high:
+            continue
+        acc.append(value)
+    if not acc:
+        return None
+    return sum(acc) / len(acc)
+
+
+def _peak_frequency(frequency: Sequence[float], values: Sequence[float] | None) -> float | None:
+    if values is None:
+        return None
+    best_freq: float | None = None
+    best_value: float | None = None
+    for f, value in zip(frequency, values, strict=True):
+        if math.isnan(value):
+            continue
+        if best_value is None or value > best_value:
+            best_value = value
+            best_freq = f
+    return best_freq
+
+
+def _diagnose_bias(
+    frequency: Sequence[float],
+    spl_delta: Sequence[float] | None,
+    measurement_spl: Sequence[float] | None,
+    predicted_spl: Sequence[float] | None,
+    *,
+    port_length_m: float | None,
+) -> MeasurementDiagnosis:
+    overall_bias = _mean(spl_delta)
+    level_trim = -overall_bias if overall_bias is not None else None
+
+    low_bias = _band_mean(frequency, spl_delta, low=None, high=45.0)
+    mid_bias = _band_mean(frequency, spl_delta, low=45.0, high=120.0)
+    high_bias = _band_mean(frequency, spl_delta, low=120.0, high=None)
+
+    peak_measured = _peak_frequency(frequency, measurement_spl)
+    peak_predicted = _peak_frequency(frequency, predicted_spl)
+    tuning_shift: float | None = None
+    recommended_length_m: float | None = None
+    length_scale: float | None = None
+    if (
+        peak_measured is not None
+        and peak_predicted is not None
+        and peak_measured > 0
+        and peak_predicted > 0
+    ):
+        tuning_shift = peak_measured - peak_predicted
+        if port_length_m and port_length_m > 0:
+            length_scale = (peak_predicted / peak_measured) ** 2
+            recommended_length_m = port_length_m * length_scale
+
+    leakage_hint: str | None = None
+    notes: list[str] = []
+
+    if overall_bias is not None and abs(overall_bias) > 0.5:
+        direction = "reduce" if overall_bias > 0 else "increase"
+        notes.append(
+            f"Apply a {direction} of approximately {abs(overall_bias):.1f} dB to align overall level."
+        )
+
+    if tuning_shift is not None and abs(tuning_shift) > 0.8:
+        shift_dir = "higher" if tuning_shift > 0 else "lower"
+        notes.append(
+            f"Measured tuning appears {shift_dir} by {abs(tuning_shift):.1f} Hz relative to prediction."
+        )
+        if length_scale is not None and abs(length_scale - 1.0) > 0.05:
+            adj = "longer" if length_scale > 1.0 else "shorter"
+            notes.append(
+                f"Adjust port length {adj} by about {abs((length_scale - 1.0) * 100):.1f}% to compensate."
+            )
+
+    if low_bias is not None and mid_bias is not None:
+        delta = low_bias - mid_bias
+        if delta <= -1.5:
+            leakage_hint = "lower_q"
+            notes.append(
+                "Low-band output is weaker than expected; consider reducing leakage Q or checking for leaks."
+            )
+        elif delta >= 1.5:
+            leakage_hint = "raise_q"
+            notes.append(
+                "Low-band output is stronger than predicted; consider increasing leakage Q or adding damping."
+            )
+
+    for label, value in (("low", low_bias), ("mid", mid_bias), ("high", high_bias)):
+        if value is not None and abs(value) > 1.0:
+            notes.append(f"Average {label} band bias is {value:+.1f} dB.")
+
+    return MeasurementDiagnosis(
+        overall_bias_db=overall_bias,
+        recommended_level_trim_db=level_trim,
+        low_band_bias_db=low_bias,
+        mid_band_bias_db=mid_bias,
+        high_band_bias_db=high_bias,
+        tuning_shift_hz=tuning_shift,
+        recommended_port_length_m=recommended_length_m,
+        recommended_port_length_scale=length_scale,
+        leakage_hint=leakage_hint,
+        notes=notes,
+    )
+
+
 __all__ = [
     "MeasurementTrace",
     "MeasurementDelta",
     "MeasurementStats",
+    "MeasurementDiagnosis",
     "measurement_from_response",
     "parse_klippel_dat",
     "parse_rew_mdat",

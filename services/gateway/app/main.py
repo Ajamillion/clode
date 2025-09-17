@@ -449,12 +449,16 @@ if FastAPI is not None:  # pragma: no branch
         response = solver.frequency_response(measurement.frequency_hz, payload.mic_distance_m)
         summary = solver.alignment_summary(response)
         predicted = measurement_from_response(response)
-        delta, stats = compare_measurement_to_prediction(measurement, predicted)
+        delta, stats, diagnosis = compare_measurement_to_prediction(
+            measurement,
+            predicted,
+        )
         return {
             "summary": summary.to_dict(),
             "prediction": predicted.to_dict(),
             "delta": delta.to_dict(),
             "stats": stats.to_dict(),
+            "diagnosis": diagnosis.to_dict(),
         }
 
     @app.post("/measurements/vented/compare")
@@ -468,12 +472,17 @@ if FastAPI is not None:  # pragma: no branch
         response = solver.frequency_response(measurement.frequency_hz, payload.mic_distance_m)
         summary = solver.alignment_summary(response)
         predicted = measurement_from_response(response)
-        delta, stats = compare_measurement_to_prediction(measurement, predicted)
+        delta, stats, diagnosis = compare_measurement_to_prediction(
+            measurement,
+            predicted,
+            port_length_m=payload.box.port.length_m,
+        )
         return {
             "summary": summary.to_dict(),
             "prediction": predicted.to_dict(),
             "delta": delta.to_dict(),
             "stats": stats.to_dict(),
+            "diagnosis": diagnosis.to_dict(),
         }
 
     @app.post("/simulate/sealed")

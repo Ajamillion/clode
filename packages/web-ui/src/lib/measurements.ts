@@ -1,6 +1,7 @@
 import type {
   MeasurementComparison,
   MeasurementDelta,
+  MeasurementDiagnosis,
   MeasurementStats,
   MeasurementTrace,
   OptimizationRun,
@@ -21,6 +22,7 @@ type ComparisonPayload = {
   prediction?: MeasurementTrace | null
   delta?: MeasurementDelta | null
   stats?: MeasurementStats | null
+  diagnosis?: MeasurementDiagnosis | null
 }
 
 function asNumberArray(value: unknown): number[] | null {
@@ -146,6 +148,46 @@ export function normaliseMeasurementStats(raw: unknown): MeasurementStats | null
   }
 }
 
+export function normaliseMeasurementDiagnosis(raw: unknown): MeasurementDiagnosis | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const read = (key: string) => {
+    const value = obj[key]
+    if (value == null) return null
+    const num = Number(value)
+    return Number.isFinite(num) ? num : null
+  }
+  const notesValue = obj.notes
+  const notes = Array.isArray(notesValue)
+    ? notesValue.map((entry) => String(entry)).filter((entry) => entry.length > 0)
+    : undefined
+  const diagnosis: MeasurementDiagnosis = {}
+  const mappings: [keyof MeasurementDiagnosis, string][] = [
+    ['overall_bias_db', 'overall_bias_db'],
+    ['recommended_level_trim_db', 'recommended_level_trim_db'],
+    ['low_band_bias_db', 'low_band_bias_db'],
+    ['mid_band_bias_db', 'mid_band_bias_db'],
+    ['high_band_bias_db', 'high_band_bias_db'],
+    ['tuning_shift_hz', 'tuning_shift_hz'],
+    ['recommended_port_length_m', 'recommended_port_length_m'],
+    ['recommended_port_length_scale', 'recommended_port_length_scale'],
+  ]
+  for (const [target, source] of mappings) {
+    const value = read(source)
+    if (value != null) {
+      diagnosis[target] = value
+    }
+  }
+  const leakage = obj.leakage_hint
+  if (leakage === 'lower_q' || leakage === 'raise_q') {
+    diagnosis.leakage_hint = leakage
+  }
+  if (notes && notes.length) {
+    diagnosis.notes = notes
+  }
+  return Object.keys(diagnosis).length ? diagnosis : null
+}
+
 export async function previewMeasurement(file: File): Promise<MeasurementTrace> {
   const form = new FormData()
   form.append('file', file)
@@ -260,5 +302,6 @@ export async function fetchMeasurementComparison(
   comparison.prediction = normaliseMeasurementTrace(data?.prediction) ?? null
   comparison.delta = normaliseMeasurementDelta(data?.delta) ?? null
   comparison.stats = normaliseMeasurementStats(data?.stats) ?? null
+  comparison.diagnosis = normaliseMeasurementDiagnosis(data?.diagnosis) ?? null
   return comparison
 }
