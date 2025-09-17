@@ -89,12 +89,12 @@ preserving the long-term vision.
 | **M3 – High-Fidelity Solvers** | Month 6 | FEM/BEM coupling prototype, nonlinear extensions, Monte Carlo tolerance engine, Playwright + pytest integration tests, Docker Compose deployment. |
 | **M4 – Platform Hardening** | Month 9 | Cloud orchestration, offline cache packaging, metamaterial/active modules behind feature flags, observability dashboards, documentation for v1.0 release. |
 
-## Progress Snapshot (Iteration 14)
+## Progress Snapshot (Iteration 15)
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
-- **Milestone M2 – Optimisation Loop:** ~97 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, and the new Studio tolerance + measurement panels now provide an end-to-end optimisation timeline backed by the gateway.
-- **Overall programme:** ≈52 % toward the v1.0 roadmap ((1.0 + 0.97 + 0.1 + 0) ÷ 4 milestones).
-- Latest iteration introduced the measurement comparison panel that previews uploaded or synthetic traces and surfaces SPL/impedance deltas from the gateway alongside the Monte Carlo snapshot, tightening the optimisation feedback loop.
+- **Milestone M2 – Optimisation Loop:** ~98 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, and the new CI pipeline now provide an end-to-end optimisation timeline backed by the gateway.
+- **Overall programme:** ≈53 % toward the v1.0 roadmap ((1.0 + 0.98 + 0.1 + 0) ÷ 4 milestones).
+- Latest iteration introduced the GitHub Actions CI workflow that runs JS/Python lint/type/test gates, generates Monte Carlo tolerance snapshots, and publishes them as artefacts alongside the existing measurement comparison work.
 
 ## 4. Completion Strategy
 
@@ -118,14 +118,14 @@ preserving the long-term vision.
    - ✅ Introduce a measurement comparison panel that previews uploads/synthetic traces and charts solver deltas.
 4. **Tooling & QA**
    - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root `pnpm` scripts.
-   - ➡️ Author GitHub Actions workflow running JS + Python unit suites and publishing Monte Carlo/tolerance snapshots as artefacts.
+   - ✅ Author GitHub Actions workflow running JS + Python unit suites and publishing Monte Carlo/tolerance snapshots as artefacts.
 
 ### 4.2 Closing Milestone M2 – Optimisation Loop
 
 - Finalise the coarse ➜ medium ➜ fine optimisation ladder by wiring differential evolution search to the existing run persistence layer and exposing adjoint/L-BFGS refinement metrics via the gateway.
 - Ship measurement ingestion MVP so real-world SPL/impedance traces can be replayed against solver predictions, unlocking the Bayesian correction flow promised in the spec.
 - Extend Studio to chart solver traces (SPL, impedance, excursion) and display constraint violation streaks, ensuring UX parity with the backend telemetry.
-- Target completion: **Iteration 14** with parallel UI/backend pairing and automated regression tests for optimisation summaries.
+- Target completion: **Iteration 15** with parallel UI/backend pairing and automated regression tests for optimisation summaries.
 
 ### 4.3 Spinning up Milestone M3 – High-Fidelity Solvers
 

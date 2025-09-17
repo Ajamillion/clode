@@ -12,3 +12,4 @@ __pycache__/
 .cache/
 coverage/
 *.log
+tolerance-snapshots/

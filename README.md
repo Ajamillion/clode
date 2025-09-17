@@ -18,6 +18,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Studio tolerance panel streaming Monte Carlo excursion/velocity risk snapshots from the gateway
 - ✅ Measurement ingestion scaffolding with Klippel/REW parsers and FastAPI comparison endpoints for SPL/impedance deltas
 - ✅ Studio measurement panel that previews uploads or synthesised traces and compares SPL/impedance deltas against solver predictions
+- ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites
@@ -55,7 +56,10 @@ Run the consolidated automation from the repo root:
 pnpm lint        # eslint for the web workspace + ruff for python modules
 pnpm typecheck   # tsconfig builds + mypy over python/services
 pnpm py:test     # Python unit tests
+pnpm py:tolerance # writes JSON reports into ./tolerance-snapshots
 ```
+
+The tolerance helper accepts additional options (`--iterations`, `--seed`, `--vented-iterations`, etc.). Pass them after `--` when using the pnpm script, for example `pnpm py:tolerance -- --iterations 256`.
 
 ## Workspace Layout
 ```
@@ -70,7 +74,7 @@ Additional services (gateway, simulation core, CLI) will be added following the 
 - Close out the multi-resolution optimisation ladder by wiring differential evolution search and adjoint refinement into the persisted run workflow.
 - Extend the measurement ingestion scaffolding into Bayesian calibration so the new comparison panel can close the solver feedback loop automatically.
 - Extend the FastAPI gateway with export/download and measurement upload endpoints, and surface the richer traces through Studio SPL/impedance charts.
-- Add CI automation (GitHub Actions) that runs pnpm lint/typecheck/test plus the Python suite and publishes tolerance snapshots.
+- Wire the tolerance artefacts into dashboards (e.g. Grafana panels or Studio overlays) so CI snapshots drive proactive manufacturing risk monitoring.
 
 ## Python Simulation Core
 
