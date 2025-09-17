@@ -96,6 +96,14 @@ def _format_float(value: float | None) -> str:
     return f"{value:.2f}"
 
 
+def _format_frequency(value: float | None) -> str:
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return "–"
+    if value >= 1000.0:
+        return f"{value / 1000.0:.2f} kHz"
+    return f"{value:.1f} Hz"
+
+
 def _format_percent(value: float | None) -> str:
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return "–"
@@ -231,6 +239,16 @@ def build_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         help="Write diagnosis notes for the calibrated rerun",
     )
+    parser.add_argument(
+        "--min-frequency",
+        type=float,
+        help="Lower frequency bound in Hz for comparison (defaults to measurement minimum)",
+    )
+    parser.add_argument(
+        "--max-frequency",
+        type=float,
+        help="Upper frequency bound in Hz for comparison (defaults to measurement maximum)",
+    )
     return parser
 
 
@@ -242,7 +260,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(f"Measurement file not found: {args.measurement}")
 
     measurement = _load_measurement(args.measurement, args.format)
-    axis = _response_axis(measurement)
+    min_freq = args.min_frequency
+    max_freq = args.max_frequency
+    if min_freq is not None and max_freq is not None and min_freq > max_freq:
+        parser.error("--min-frequency must be less than or equal to --max-frequency")
+
+    banded_measurement = measurement
+    if min_freq is not None or max_freq is not None:
+        try:
+            banded_measurement = measurement.bandpass(min_freq, max_freq)
+        except ValueError as exc:
+            parser.error(str(exc))
+
+    axis = _response_axis(banded_measurement)
+    band_min = min(banded_measurement.frequency_hz)
+    band_max = max(banded_measurement.frequency_hz)
 
     solver: SealedBoxSolver | VentedBoxSolver
     port_length_m: float | None = None
@@ -264,7 +296,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     prediction = measurement_from_response(solver.frequency_response(axis, 1.0))
     delta, stats, diagnosis = compare_measurement_to_prediction(
-        measurement,
+        banded_measurement,
         prediction,
         port_length_m=port_length_m,
     )
@@ -309,7 +341,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         calibrated_prediction = measurement_from_response(calibrated_solver.frequency_response(axis, 1.0))
         calibrated_delta, calibrated_stats, calibrated_diagnosis = compare_measurement_to_prediction(
-            measurement,
+            banded_measurement,
             calibrated_prediction,
             port_length_m=calibrated_port_length,
         )
@@ -333,6 +365,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.json:
         payload = {
             "alignment": args.alignment,
+            "frequency_band": {
+                "min_hz": band_min,
+                "max_hz": band_max,
+            },
             "stats": stats.to_dict(),
             "diagnosis": diagnosis.to_dict(),
             "calibration": calibration.to_dict(),
@@ -351,6 +387,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         print(f"Alignment: {args.alignment}")
         print(f"Sample count: {stats.sample_count}")
+        print(
+            "Frequency band: "
+            f"{_format_frequency(band_min)}"
+            f" → {_format_frequency(band_max)}"
+        )
         print(f"SPL RMSE: {_format_float(stats.spl_rmse_db)} dB")
         print(f"SPL bias: {_format_float(stats.spl_bias_db)} dB")
         print(f"Max SPL delta: {_format_float(stats.max_spl_delta_db)} dB")

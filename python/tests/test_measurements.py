@@ -167,6 +167,28 @@ class MeasurementComparisonTests(unittest.TestCase):
         self.assertEqual(diagnosis.leakage_hint, 'lower_q')
         self.assertTrue(diagnosis.notes)
 
+    def test_measurement_bandpass_limits_samples(self) -> None:
+        measurement = MeasurementTrace(
+            frequency_hz=[15.0, 25.0, 40.0, 80.0, 120.0],
+            spl_db=[80.0, 82.0, 85.0, 88.0, 90.0],
+        )
+        filtered = measurement.bandpass(30.0, 90.0)
+        self.assertEqual(filtered.frequency_hz, [40.0, 80.0])
+        assert filtered.spl_db is not None
+        self.assertEqual(filtered.spl_db, [85.0, 88.0])
+
+        delta, stats, _ = compare_measurement_to_prediction(filtered, self.prediction)
+        self.assertEqual(stats.sample_count, 2)
+        assert delta.frequency_hz == [40.0, 80.0]
+
+    def test_bandpass_raises_when_out_of_range(self) -> None:
+        measurement = MeasurementTrace(
+            frequency_hz=[20.0, 40.0, 80.0],
+            spl_db=[82.0, 85.0, 90.0],
+        )
+        with self.assertRaises(ValueError):
+            measurement.bandpass(100.0, 150.0)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

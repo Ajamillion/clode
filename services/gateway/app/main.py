@@ -156,6 +156,25 @@ def _measurement_from_payload(payload: MeasurementData) -> MeasurementTrace:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+def _band_limited_measurement(
+    trace: MeasurementTrace,
+    minimum_hz: float | None,
+    maximum_hz: float | None,
+) -> MeasurementTrace:
+    if minimum_hz is None and maximum_hz is None:
+        return trace
+    try:
+        return trace.bandpass(minimum_hz, maximum_hz)
+    except ValueError as exc:  # pragma: no cover - validation surface
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _band_from_trace(trace: MeasurementTrace) -> dict[str, float]:
+    minimum = min(trace.frequency_hz)
+    maximum = max(trace.frequency_hz)
+    return {"min_hz": float(minimum), "max_hz": float(maximum)}
+
+
 def _resolve_alignment(params: dict[str, Any]) -> str:
     preferred = str(params.get("preferAlignment") or DEFAULT_ALIGNMENT).strip().lower()
     if preferred in {"sealed", "vented"}:
@@ -374,6 +393,8 @@ class SealedMeasurementRequest(BaseModel):
     measurement: MeasurementData
     drive_voltage: float = Field(2.83, gt=0)
     mic_distance_m: float = Field(1.0, gt=0)
+    min_frequency_hz: float | None = Field(None, gt=0)
+    max_frequency_hz: float | None = Field(None, gt=0)
 
 
 class VentedMeasurementRequest(BaseModel):
@@ -382,6 +403,8 @@ class VentedMeasurementRequest(BaseModel):
     measurement: MeasurementData
     drive_voltage: float = Field(2.83, gt=0)
     mic_distance_m: float = Field(1.0, gt=0)
+    min_frequency_hz: float | None = Field(None, gt=0)
+    max_frequency_hz: float | None = Field(None, gt=0)
 
 
 class OptimizationParams(BaseModel):
@@ -496,6 +519,9 @@ if FastAPI is not None:  # pragma: no branch
     @app.post("/measurements/sealed/compare")
     async def compare_sealed_measurement(payload: SealedMeasurementRequest) -> dict[str, Any]:
         measurement = _measurement_from_payload(payload.measurement)
+        measurement = _band_limited_measurement(
+            measurement, payload.min_frequency_hz, payload.max_frequency_hz
+        )
         solver = SealedBoxSolver(
             payload.driver.to_driver(),
             payload.box.to_box(),
@@ -522,11 +548,15 @@ if FastAPI is not None:  # pragma: no branch
             "diagnosis": diagnosis.to_dict(),
             "calibration": calibration.to_dict(),
             "calibration_overrides": overrides.to_dict(),
+            "frequency_band": _band_from_trace(measurement),
         }
 
     @app.post("/measurements/vented/compare")
     async def compare_vented_measurement(payload: VentedMeasurementRequest) -> dict[str, Any]:
         measurement = _measurement_from_payload(payload.measurement)
+        measurement = _band_limited_measurement(
+            measurement, payload.min_frequency_hz, payload.max_frequency_hz
+        )
         solver = VentedBoxSolver(
             payload.driver.to_driver(),
             payload.box.to_box(),
@@ -555,6 +585,7 @@ if FastAPI is not None:  # pragma: no branch
             "diagnosis": diagnosis.to_dict(),
             "calibration": calibration.to_dict(),
             "calibration_overrides": overrides.to_dict(),
+            "frequency_band": _band_from_trace(measurement),
         }
 
     @app.post("/simulate/sealed")

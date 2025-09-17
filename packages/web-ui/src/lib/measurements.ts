@@ -5,6 +5,7 @@ import type {
   MeasurementCalibrationOverrides,
   MeasurementDelta,
   MeasurementDiagnosis,
+  MeasurementFrequencyBand,
   MeasurementStats,
   MeasurementTrace,
   OptimizationRun,
@@ -150,6 +151,17 @@ export function normaliseMeasurementStats(raw: unknown): MeasurementStats | null
     max_spl_delta_db: read('max_spl_delta_db'),
     phase_rmse_deg: read('phase_rmse_deg'),
     impedance_mag_rmse_ohm: read('impedance_mag_rmse_ohm'),
+  }
+}
+
+export function normaliseFrequencyBand(raw: unknown): MeasurementFrequencyBand | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const min = Number(obj.min_hz)
+  const max = Number(obj.max_hz)
+  return {
+    min_hz: Number.isFinite(min) ? min : null,
+    max_hz: Number.isFinite(max) ? max : null,
   }
 }
 
@@ -338,6 +350,7 @@ export function synthesiseMeasurementFromRun(run: OptimizationRun | null): Measu
 export function buildMeasurementRequest(
   run: OptimizationRun | null,
   measurement: MeasurementTrace | null,
+  band?: { minHz: number | null; maxHz: number | null },
 ): MeasurementRequest | null {
   if (!run || run.status !== 'succeeded' || !measurement || measurement.frequency_hz.length === 0) {
     return null
@@ -349,12 +362,25 @@ export function buildMeasurementRequest(
     return null
   }
   const driveVoltage = deriveDriveVoltage(run)
+  const sanitize = (value: number | null | undefined) => {
+    if (value == null) return null
+    const num = Number(value)
+    if (!Number.isFinite(num) || num <= 0) return null
+    return num
+  }
+  let minFrequency = sanitize(band?.minHz)
+  let maxFrequency = sanitize(band?.maxHz)
+  if (minFrequency != null && maxFrequency != null && minFrequency > maxFrequency) {
+    ;[minFrequency, maxFrequency] = [maxFrequency, minFrequency]
+  }
   const alignment = (run.result?.alignment ?? 'sealed').toLowerCase()
   const baseBody = {
     driver: DEFAULT_DRIVER,
     measurement: serialiseMeasurement(measurement),
     drive_voltage: driveVoltage,
     mic_distance_m: 1,
+    ...(minFrequency ? { min_frequency_hz: minFrequency } : {}),
+    ...(maxFrequency ? { max_frequency_hz: maxFrequency } : {}),
   }
   if (alignment === 'vented') {
     return {
@@ -398,5 +424,6 @@ export async function fetchMeasurementComparison(
   comparison.diagnosis = normaliseMeasurementDiagnosis(data?.diagnosis) ?? null
   comparison.calibration = normaliseMeasurementCalibration(data?.calibration) ?? null
   comparison.calibration_overrides = normaliseMeasurementOverrides(data?.calibration_overrides) ?? null
+  comparison.frequency_band = normaliseFrequencyBand(data?.frequency_band) ?? null
   return comparison
 }

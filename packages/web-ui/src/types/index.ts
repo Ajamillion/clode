@@ -113,6 +113,11 @@ export type MeasurementStats = {
   impedance_mag_rmse_ohm?: number | null
 }
 
+export type MeasurementFrequencyBand = {
+  min_hz: number | null
+  max_hz: number | null
+}
+
 export type MeasurementDiagnosis = {
   overall_bias_db?: number | null
   recommended_level_trim_db?: number | null
@@ -168,4 +173,5 @@ export type MeasurementComparison = {
   diagnosis?: MeasurementDiagnosis | null
   calibration?: MeasurementCalibration | null
   calibration_overrides?: MeasurementCalibrationOverrides | null
+  frequency_band?: MeasurementFrequencyBand | null
 }

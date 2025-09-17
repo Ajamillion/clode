@@ -4,7 +4,6 @@ import {
   fetchMeasurementComparison,
   previewMeasurement,
   synthesiseMeasurementFromRun,
-  type MeasurementRequest,
 } from '@lib/measurements'
 import type { MeasurementComparison, MeasurementTrace, OptimizationRun } from '@types/index'
 
@@ -18,16 +17,19 @@ type MeasurementState = {
   lastComparedAt: number | null
   loading: boolean
   error: string | null
+  minFrequencyHz: number | null
+  maxFrequencyHz: number | null
   previewFromFile: (file: File) => Promise<void>
   generateSynthetic: (run: OptimizationRun | null) => void
   compareWithRun: (run: OptimizationRun | null) => Promise<void>
   clearComparison: () => void
   reset: () => void
+  setFrequencyBand: (minHz: number | null, maxHz: number | null) => void
 }
 
 const baseState: Pick<
   MeasurementState,
-  'preview' | 'previewSource' | 'comparison' | 'lastRunId' | 'lastComparedAt' | 'loading' | 'error'
+  'preview' | 'previewSource' | 'comparison' | 'lastRunId' | 'lastComparedAt' | 'loading' | 'error' | 'minFrequencyHz' | 'maxFrequencyHz'
 > = {
   preview: null,
   previewSource: null,
@@ -36,24 +38,13 @@ const baseState: Pick<
   lastComparedAt: null,
   loading: false,
   error: null,
+  minFrequencyHz: null,
+  maxFrequencyHz: null,
 }
 
 function toErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message
   return typeof error === 'string' ? error : 'Unexpected measurement error'
-}
-
-function assertRequest(
-  run: OptimizationRun | null,
-  measurement: MeasurementTrace | null,
-): MeasurementRequest | null {
-  if (!run || run.status !== 'succeeded') {
-    return null
-  }
-  if (!measurement || measurement.frequency_hz.length === 0) {
-    return null
-  }
-  return buildMeasurementRequest(run, measurement)
 }
 
 export const useMeasurement = create<MeasurementState>((set, get) => ({
@@ -96,14 +87,24 @@ export const useMeasurement = create<MeasurementState>((set, get) => ({
   },
   compareWithRun: async (run) => {
     const measurement = get().preview
-    const request = assertRequest(run, measurement)
-    if (!request || !run) {
+    const minFrequencyHz = get().minFrequencyHz
+    const maxFrequencyHz = get().maxFrequencyHz
+    if (!run || run.status !== 'succeeded') {
       set({ error: 'Comparison requires a completed optimisation run and a measurement preview.', loading: false })
+      return
+    }
+    if (!measurement || measurement.frequency_hz.length === 0) {
+      set({ error: 'Comparison requires a completed optimisation run and a measurement preview.', loading: false })
+      return
+    }
+    const bandedRequest = buildMeasurementRequest(run, measurement, { minHz: minFrequencyHz, maxHz: maxFrequencyHz })
+    if (!bandedRequest) {
+      set({ error: 'Comparison request could not be created.', loading: false })
       return
     }
     set({ loading: true, error: null })
     try {
-      const comparison = await fetchMeasurementComparison(request)
+      const comparison = await fetchMeasurementComparison(bandedRequest)
       set({
         comparison,
         lastRunId: run.id,
@@ -118,4 +119,17 @@ export const useMeasurement = create<MeasurementState>((set, get) => ({
     set({ comparison: null, lastRunId: null, lastComparedAt: null })
   },
   reset: () => set({ ...baseState }),
+  setFrequencyBand: (minHz, maxHz) => {
+    const sanitize = (value: number | null) => {
+      if (value == null) return null
+      if (!Number.isFinite(value) || value <= 0) return null
+      return value
+    }
+    let minValue = sanitize(minHz)
+    let maxValue = sanitize(maxHz)
+    if (minValue != null && maxValue != null && minValue > maxValue) {
+      ;[minValue, maxValue] = [maxValue, minValue]
+    }
+    set({ minFrequencyHz: minValue, maxFrequencyHz: maxValue })
+  },
 }))

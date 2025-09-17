@@ -163,13 +163,44 @@ export function MeasurementPanel() {
   const generateSynthetic = useMeasurement((state) => state.generateSynthetic)
   const compareWithRun = useMeasurement((state) => state.compareWithRun)
   const clearComparison = useMeasurement((state) => state.clearComparison)
+  const minFrequencyHz = useMeasurement((state) => state.minFrequencyHz)
+  const maxFrequencyHz = useMeasurement((state) => state.maxFrequencyHz)
+  const setFrequencyBand = useMeasurement((state) => state.setFrequencyBand)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const measurementSummary = useMemo(() => summariseMeasurement(preview), [preview])
 
+  const comparisonBand = useMemo(() => {
+    const band = comparison?.frequency_band
+    if (band) {
+      return {
+        min: band.min_hz ?? null,
+        max: band.max_hz ?? null,
+      }
+    }
+    return {
+      min: minFrequencyHz ?? measurementSummary?.minFreq ?? null,
+      max: maxFrequencyHz ?? measurementSummary?.maxFreq ?? null,
+    }
+  }, [
+    comparison?.frequency_band?.min_hz,
+    comparison?.frequency_band?.max_hz,
+    minFrequencyHz,
+    maxFrequencyHz,
+    measurementSummary?.minFreq,
+    measurementSummary?.maxFreq,
+  ])
+
   const highlightEntries = useMemo(() => {
     const entries: { label: string; value: string }[] = []
+    const band = comparison?.frequency_band
+    if (band) {
+      entries.push({
+        label: 'Band',
+        value: `${formatFrequency(band.min_hz ?? null)} → ${formatFrequency(band.max_hz ?? null)}`,
+      })
+    }
     const stats = comparison?.stats
     if (stats) {
       if (stats.spl_rmse_db != null) entries.push({ label: 'SPL RMSE', value: formatDecibel(stats.spl_rmse_db) })
@@ -274,6 +305,27 @@ export function MeasurementPanel() {
     event.currentTarget.value = ''
   }
 
+  const handleBandChange = (type: 'min' | 'max'): ChangeEventHandler<HTMLInputElement> => (event) => {
+    const raw = event.currentTarget.value ?? ''
+    const trimmed = raw.trim()
+    const parsed = trimmed.length > 0 ? Number(trimmed) : null
+    const sanitized = parsed != null && Number.isFinite(parsed) ? parsed : null
+    if (type === 'min') {
+      setFrequencyBand(sanitized, maxFrequencyHz)
+    } else {
+      setFrequencyBand(minFrequencyHz, sanitized)
+    }
+  }
+
+  const applyPreviewBand = () => {
+    if (!measurementSummary) return
+    setFrequencyBand(measurementSummary.minFreq ?? null, measurementSummary.maxFreq ?? null)
+  }
+
+  const clearBand = () => {
+    setFrequencyBand(null, null)
+  }
+
   let body: JSX.Element
   if (!run || run.status !== 'succeeded') {
     body = (
@@ -289,30 +341,68 @@ export function MeasurementPanel() {
         <section className="measurement__section">
           <header className="measurement__section-title">Measurement preview</header>
           {preview ? (
-            <dl className="measurement__grid">
-              <div>
-                <dt>Points</dt>
-                <dd>{measurementSummary?.points ?? preview.frequency_hz.length}</dd>
+            <>
+              <dl className="measurement__grid">
+                <div>
+                  <dt>Points</dt>
+                  <dd>{measurementSummary?.points ?? preview.frequency_hz.length}</dd>
+                </div>
+                <div>
+                  <dt>Frequency span</dt>
+                  <dd>
+                    {formatFrequency(measurementSummary?.minFreq ?? null)}
+                    <span> → {formatFrequency(measurementSummary?.maxFreq ?? null)}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>SPL window</dt>
+                  <dd>
+                    {measurementSummary?.splMin != null ? formatDecibel(measurementSummary.splMin) : '—'}
+                    <span> → {measurementSummary?.splMax != null ? formatDecibel(measurementSummary.splMax) : '—'}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Source</dt>
+                  <dd>{previewSource ? SOURCE_LABEL[previewSource] ?? previewSource : '—'}</dd>
+                </div>
+              </dl>
+              <div className="measurement__band">
+                <div className="measurement__band-info">
+                  <span>Comparison band</span>
+                  <strong>
+                    {formatFrequency(comparisonBand.min)}
+                    <span className="measurement__band-arrow"> → </span>
+                    {formatFrequency(comparisonBand.max)}
+                  </strong>
+                </div>
+                <div className="measurement__band-controls">
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    placeholder="Min Hz"
+                    value={minFrequencyHz ?? ''}
+                    onChange={handleBandChange('min')}
+                  />
+                  <span className="measurement__band-sep">→</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    placeholder="Max Hz"
+                    value={maxFrequencyHz ?? ''}
+                    onChange={handleBandChange('max')}
+                  />
+                  <button type="button" onClick={applyPreviewBand} disabled={!measurementSummary}>
+                    Use preview span
+                  </button>
+                  <button type="button" onClick={clearBand} className="measurement__band-reset">
+                    Reset
+                  </button>
+                </div>
+                <p className="measurement__band-hint">Leave fields blank to compare across the full measurement span.</p>
               </div>
-              <div>
-                <dt>Frequency span</dt>
-                <dd>
-                  {formatFrequency(measurementSummary?.minFreq ?? null)}
-                  <span> → {formatFrequency(measurementSummary?.maxFreq ?? null)}</span>
-                </dd>
-              </div>
-              <div>
-                <dt>SPL window</dt>
-                <dd>
-                  {measurementSummary?.splMin != null ? formatDecibel(measurementSummary.splMin) : '—'}
-                  <span> → {measurementSummary?.splMax != null ? formatDecibel(measurementSummary.splMax) : '—'}</span>
-                </dd>
-              </div>
-              <div>
-                <dt>Source</dt>
-                <dd>{previewSource ? SOURCE_LABEL[previewSource] ?? previewSource : '—'}</dd>
-              </div>
-            </dl>
+            </>
           ) : (
             <p className="measurement__empty">Generate a synthetic measurement or upload a Klippel/REW capture to compare.</p>
           )}

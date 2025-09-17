@@ -69,6 +69,9 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
 
             payload = json.loads(completed.stdout)
             self.assertEqual(payload["alignment"], "sealed")
+            band = payload["frequency_band"]
+            self.assertAlmostEqual(band["min_hz"], min(frequencies))
+            self.assertAlmostEqual(band["max_hz"], max(frequencies))
             stats = payload["stats"]
             self.assertEqual(stats["sample_count"], len(frequencies))
             self.assertLess(stats["spl_rmse_db"], 1e-6)
@@ -116,6 +119,47 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             overrides_file = json.loads(overrides_path.read_text(encoding="utf-8"))
             self.assertIn("drive_voltage_v", overrides_file)
             self.assertEqual(overrides_file["port_length_m"], None)
+
+    def test_cli_respects_frequency_band(self) -> None:
+        project_root = pathlib.Path(__file__).resolve().parents[1]
+        script_path = project_root / "scripts" / "compare_measurements.py"
+
+        solver = SealedBoxSolver(DEFAULT_DRIVER, BoxDesign(volume_l=55.0))
+        frequencies = [20.0, 40.0, 80.0, 160.0]
+        response = solver.frequency_response(frequencies, 1.0)
+        measurement = measurement_from_response(response)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            measurement_path = pathlib.Path(tmpdir) / "measurement.dat"
+            measurement_path.write_text(
+                "".join(f"{f};{spl}\n" for f, spl in zip(measurement.frequency_hz, measurement.spl_db, strict=True)),
+                encoding="utf-8",
+            )
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(script_path),
+                    str(measurement_path),
+                    "--alignment",
+                    "sealed",
+                    "--json",
+                    "--min-frequency",
+                    "30",
+                    "--max-frequency",
+                    "120",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            payload = json.loads(completed.stdout)
+            band = payload["frequency_band"]
+            self.assertAlmostEqual(band["min_hz"], 40.0)
+            self.assertAlmostEqual(band["max_hz"], 80.0)
+            stats = payload["stats"]
+            self.assertEqual(stats["sample_count"], 2)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -121,3 +121,5 @@ The command prints a human-readable summary by default; pass `--json` for machin
 Add `--apply-overrides` to trigger a second solver run that applies the derived calibration overrides and reports the corrected SPL, phase, and impedance errors. When enabled you can capture the calibrated metrics via `--calibrated-stats-output`, `--calibrated-delta-output`, and `--calibrated-diagnosis-output` alongside the baseline results.
 
 Diagnosis output highlights systematic biases: low/mid/high-band SPL offsets, suggested global level trims, tuning shifts with estimated port-length adjustments, leakage hints, and a note stack summarising the most actionable insights. Calibration payloads provide Bayesian posteriors with 95 % credible intervals for the recommended level trims, port length scaling, and leakage-Q multipliers.
+
+Pass `--min-frequency` and/or `--max-frequency` to focus the analysis on a specific band—handy when measurements get noisy at the extremes or when you only care about the sub-bass window. The Studio measurement panel mirrors the behaviour with inline band controls so UI-driven comparisons stay aligned with the CLI outputs.

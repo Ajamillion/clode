@@ -558,6 +558,89 @@ canvas {
   color: #f8fafc;
 }
 
+.measurement__band {
+  display: grid;
+  gap: 0.5rem;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.measurement__band-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #cbd5f5;
+}
+
+.measurement__band-info span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.measurement__band-info strong {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.measurement__band-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.measurement__band-controls input {
+  width: 5.5rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  font-size: 0.75rem;
+}
+
+.measurement__band-controls button {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.6rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(30, 41, 59, 0.75);
+  color: #e2e8f0;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: border 0.2s ease, background 0.2s ease;
+}
+
+.measurement__band-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.measurement__band-reset {
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+.measurement__band-hint {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.measurement__band-sep,
+.measurement__band-arrow {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
 .measurement__clear {
   justify-self: flex-start;
   appearance: none;

@@ -52,7 +52,7 @@
   - Returns alignment summaries (Fc/Qtc, Fb, -3 dB edges, velocity peaks) alongside solver traces.
   - Streams hybrid solver responses via `/simulate/hybrid`, returning multi-plane pressure slices with per-plane maxima/means and hotspot coordinates for Studio overlays, and allows callers to throttle snapshot density via the `snapshot_stride` request field.
   - Offers Monte Carlo tolerance endpoints to summarise manufacturing risk (excursion, port velocity) with qualitative risk ratings directly from the gateway.
-  - Provides measurement preview + comparison endpoints that parse Klippel `.dat` / REW `.mdat` uploads and report SPL/impedance deltas against solver predictions, returning both heuristic diagnoses and calibration posteriors.
+  - Provides measurement preview + comparison endpoints that parse Klippel `.dat` / REW `.mdat` uploads and report SPL/impedance deltas against solver predictions, returning both heuristic diagnoses and calibration posteriors with optional frequency-band gating for targeted fits.
   - Hosts WebSocket streams for live optimization telemetry (iterations, constraint hits, topology swaps).
   - Manages run lifecycle (start, pause, resume, cancel) with async tasks.
   - Persists run inputs/outputs in SQLite via a lightweight `RunStore` with status counts + filters.

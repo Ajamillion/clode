@@ -67,6 +67,39 @@ class MeasurementTrace:
             thd_percent=_interp_series(thd_sorted),
         )
 
+    def bandpass(self, minimum_hz: float | None, maximum_hz: float | None) -> MeasurementTrace:
+        """Return a copy of the trace limited to the provided frequency band."""
+
+        if minimum_hz is None and maximum_hz is None:
+            return self
+
+        if minimum_hz is not None and maximum_hz is not None and minimum_hz > maximum_hz:
+            raise ValueError("Minimum frequency must be less than or equal to maximum frequency")
+
+        indices: list[int] = []
+        for idx, freq in enumerate(self.frequency_hz):
+            if minimum_hz is not None and freq < minimum_hz:
+                continue
+            if maximum_hz is not None and freq > maximum_hz:
+                continue
+            indices.append(idx)
+
+        if not indices:
+            raise ValueError("No samples fall within the requested frequency band")
+
+        def _slice(series: list[Any] | None) -> list[Any] | None:
+            if series is None:
+                return None
+            return [series[i] for i in indices]
+
+        return MeasurementTrace(
+            frequency_hz=[self.frequency_hz[i] for i in indices],
+            spl_db=_slice(self.spl_db),
+            phase_deg=_slice(self.phase_deg),
+            impedance_ohm=_slice(self.impedance_ohm),
+            thd_percent=_slice(self.thd_percent),
+        )
+
 
 @dataclass(slots=True)
 class MeasurementDelta:
