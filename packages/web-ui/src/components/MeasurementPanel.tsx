@@ -167,6 +167,7 @@ export function MeasurementPanel() {
   const minFrequencyHz = useMeasurement((state) => state.minFrequencyHz)
   const maxFrequencyHz = useMeasurement((state) => state.maxFrequencyHz)
   const setFrequencyBand = useMeasurement((state) => state.setFrequencyBand)
+  const exportComparisonCsv = useMeasurement((state) => state.exportComparisonCsv)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -339,6 +340,7 @@ export function MeasurementPanel() {
   }, [diagnosisNotes, calibrationNotes, calibratedNotes])
 
   const canCompare = !!preview && run?.status === 'succeeded'
+  const canExport = !!preview && !!comparison
 
   const handleFileChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     const file = event.currentTarget.files?.[0]
@@ -493,9 +495,19 @@ export function MeasurementPanel() {
                 </div>
               )}
               <MeasurementComparisonChart measurement={preview} comparison={comparison} />
-              <button type="button" className="measurement__clear" onClick={() => clearComparison()}>
-                Clear comparison
-              </button>
+              <div className="measurement__result-actions">
+                <button
+                  type="button"
+                  className="measurement__export"
+                  onClick={() => exportComparisonCsv()}
+                  disabled={!canExport}
+                >
+                  Export CSV
+                </button>
+                <button type="button" className="measurement__clear" onClick={() => clearComparison()}>
+                  Clear comparison
+                </button>
+              </div>
             </div>
           ) : (
             <p className="measurement__empty">Run a comparison to surface SPL, phase, impedance, and THD overlays alongside the solver deltas.</p>

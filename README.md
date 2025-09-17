@@ -25,6 +25,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Measurement comparisons can automatically rerun solver predictions with the derived overrides, returning calibrated stats alongside the baseline fit
 - ✅ Measurement panel overlays measured SPL against solver baselines and calibrated reruns so improvements are visible at a glance
 - ✅ Measurement overlays now span SPL, phase, impedance magnitude, and THD with delta toggles to verify calibration impact at a glance
+- ✅ Measurement comparison exports capture measured/predicted traces, deltas, and calibrated reruns as CSV snapshots for downstream analysis
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
 - ✅ Hybrid solver prototype that blends the lumped models with interior pressure field
   previews, port compression metrics, and Mach tracking
@@ -42,7 +43,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   remain outstanding before the M3 high-fidelity milestone can be called complete
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
-Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈63 %**, overall ≈66 % toward the v1.0 target.
+Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈64 %**, overall ≈67 % toward the v1.0 target.
 
 ## Prerequisites
 - Node.js 20+
@@ -134,3 +135,5 @@ Add `--apply-overrides` to trigger a second solver run that applies the derived 
 Diagnosis output highlights systematic biases: low/mid/high-band SPL offsets, suggested global level trims, tuning shifts with estimated port-length adjustments, leakage hints, and a note stack summarising the most actionable insights. Calibration payloads provide Bayesian posteriors with 95 % credible intervals for the recommended level trims, port length scaling, and leakage-Q multipliers.
 
 Pass `--min-frequency` and/or `--max-frequency` to focus the analysis on a specific band—handy when measurements get noisy at the extremes or when you only care about the sub-bass window. The Studio measurement panel mirrors the behaviour with inline band controls so UI-driven comparisons stay aligned with the CLI outputs.
+
+Once a comparison completes in Studio, use the **Export CSV** action to download a frequency-by-frequency snapshot that includes the measurement trace, solver prediction, delta overlays, and any calibrated rerun data. The export honours the active frequency band so downstream analysis tools stay aligned with the window you evaluated in the UI.

@@ -93,9 +93,9 @@ preserving the long-term vision.
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
 - **Milestone M2 – Optimisation Loop:** 100 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, Bayesian calibration helpers, CI automation, and the schema catalog endpoints/CLI provide an end-to-end optimisation timeline backed by the gateway.
-- **Milestone M3 – High-Fidelity Solvers:** ≈63 % complete. The reduced-order hybrid solver, port compression heuristics, suspension creep toggle, thermal telemetry, and multi-metric measurement overlays are landed alongside calibration-aware reruns, but the outstanding Playwright end-to-end suite and Docker Compose orchestration mean the milestone remains open while the FEM/BEM adaptor and deployment tooling continue to mature.
-- **Overall programme:** ≈66 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.63 + 0) ÷ 4 milestones).
-- Latest iteration extends the measurement comparison panel with phase, impedance, and THD overlays plus delta toggles, tightening the fit analysis loop while Playwright coverage and deployment automation remain on the near-term queue.
+- **Milestone M3 – High-Fidelity Solvers:** ≈64 % complete. The reduced-order hybrid solver, port compression heuristics, suspension creep toggle, thermal telemetry, multi-metric measurement overlays, and exportable comparison datasets are landed alongside calibration-aware reruns, but the outstanding Playwright end-to-end suite and Docker Compose orchestration mean the milestone remains open while the FEM/BEM adaptor and deployment tooling continue to mature.
+- **Overall programme:** ≈67 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.64 + 0) ÷ 4 milestones).
+- Latest iteration extends the measurement comparison panel with CSV exports that bundle measured/predicted/calibrated traces, keeping the fit analysis loop auditable while Playwright coverage and deployment automation remain on the near-term queue.
 
 ## 4. Completion Strategy
 
@@ -118,7 +118,7 @@ preserving the long-term vision.
    - ✅ Render SPL/impedance plots from gateway responses with historical overlays.
    - ✅ Surface solver alignment metadata (Fc/Fb, excursion margins) in HUD with run history timeline and status chips.
    - ✅ Add tolerance visualisations (qualitative risk callouts driven by Monte Carlo sweeps) mirroring the new gateway outputs.
-- ✅ Introduce a measurement comparison panel that previews uploads/synthetic traces and now charts SPL, phase, impedance, and THD overlays alongside solver deltas.
+- ✅ Introduce a measurement comparison panel that previews uploads/synthetic traces, charts SPL/phase/impedance/THD overlays with solver deltas, and now exports the combined traces as CSV snapshots for downstream tooling.
 4. **Tooling & QA**
    - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root `pnpm` scripts.
    - ✅ Author GitHub Actions workflow running JS + Python unit suites and publishing Monte Carlo/tolerance snapshots as artefacts.

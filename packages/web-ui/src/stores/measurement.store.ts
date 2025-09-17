@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import {
+  buildComparisonCsv,
   buildMeasurementRequest,
   fetchMeasurementComparison,
   previewMeasurement,
@@ -25,6 +26,7 @@ type MeasurementState = {
   clearComparison: () => void
   reset: () => void
   setFrequencyBand: (minHz: number | null, maxHz: number | null) => void
+  exportComparisonCsv: () => void
 }
 
 const baseState: Pick<
@@ -131,5 +133,29 @@ export const useMeasurement = create<MeasurementState>((set, get) => ({
       ;[minValue, maxValue] = [maxValue, minValue]
     }
     set({ minFrequencyHz: minValue, maxFrequencyHz: maxValue })
+  },
+  exportComparisonCsv: () => {
+    const preview = get().preview
+    const comparison = get().comparison
+    const csv = buildComparisonCsv(preview, comparison)
+    if (!csv) {
+      set({ error: 'Export requires a previewed measurement and comparison results.' })
+      return
+    }
+    set({ error: null })
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      console.warn('Comparison CSV export is only available in the browser environment.')
+      return
+    }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `measurement-comparison-${timestamp}.csv`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
   },
 }))

@@ -21,6 +21,8 @@ export type MeasurementRequest = {
   body: Record<string, unknown>
 }
 
+type Lookup = Map<string, number>
+
 type NullableNumberRecord = Record<string, number | null>
 
 type ComparisonPayload = {
@@ -40,6 +42,60 @@ function asNumberArray(value: unknown): number[] | null {
     .map((entry) => Number(entry))
     .filter((entry) => Number.isFinite(entry))
   return arr.length ? arr : null
+}
+
+function isFiniteNumber(value: number | null | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function frequencyKey(value: number | null | undefined): string | null {
+  if (!isFiniteNumber(value)) return null
+  return value.toFixed(6)
+}
+
+function createLookup(frequency: number[] | undefined, values: number[] | undefined): Lookup | null {
+  if (!frequency || !values) return null
+  const len = Math.min(frequency.length, values.length)
+  const lookup: Lookup = new Map()
+  for (let i = 0; i < len; i += 1) {
+    const key = frequencyKey(frequency[i])
+    const value = values[i]
+    if (key && isFiniteNumber(value)) {
+      lookup.set(key, value)
+    }
+  }
+  return lookup.size > 0 ? lookup : null
+}
+
+function valueAt(values: number[] | undefined, index: number): number | null {
+  if (!values || index < 0 || index >= values.length) return null
+  const value = values[index]
+  return isFiniteNumber(value) ? value : null
+}
+
+function lookupValue(
+  index: number,
+  frequency: number,
+  values: number[] | undefined,
+  lookup: Lookup | null,
+): number | null {
+  const key = frequencyKey(frequency)
+  if (key && lookup?.has(key)) {
+    const value = lookup.get(key)
+    return isFiniteNumber(value) ? value : null
+  }
+  return valueAt(values, index)
+}
+
+function magnitude(real: number | null, imag: number | null): number | null {
+  if (real == null || imag == null) return null
+  return Math.sqrt(real * real + imag * imag)
+}
+
+function csvValue(value: number | null): string {
+  if (!isFiniteNumber(value)) return ''
+  const normalized = Math.abs(value) < 1e-12 ? 0 : value
+  return String(normalized)
 }
 
 function serialiseMeasurement(trace: MeasurementTrace): Record<string, unknown> {
@@ -474,4 +530,200 @@ export async function fetchMeasurementComparison(
   comparison.frequency_band = normaliseFrequencyBand(data?.frequency_band) ?? null
   comparison.calibrated = normaliseCalibratedResult(data?.calibrated) ?? null
   return comparison
+}
+
+type Column = {
+  header: string
+  getter: (index: number, frequency: number) => number | null
+}
+
+export function buildComparisonCsv(
+  measurement: MeasurementTrace | null,
+  comparison: MeasurementComparison | null,
+): string | null {
+  if (!measurement || !comparison) return null
+  const frequencyAxis = measurement.frequency_hz
+  if (!Array.isArray(frequencyAxis) || frequencyAxis.length === 0) return null
+
+  const prediction = comparison.prediction ?? null
+  const delta = comparison.delta ?? null
+  const calibratedPrediction = comparison.calibrated?.prediction ?? null
+  const calibratedDelta = comparison.calibrated?.delta ?? null
+
+  const predictionLookups = {
+    spl: createLookup(prediction?.frequency_hz, prediction?.spl_db),
+    phase: createLookup(prediction?.frequency_hz, prediction?.phase_deg),
+    impReal: createLookup(prediction?.frequency_hz, prediction?.impedance_real),
+    impImag: createLookup(prediction?.frequency_hz, prediction?.impedance_imag),
+    thd: createLookup(prediction?.frequency_hz, prediction?.thd_percent),
+  }
+
+  const deltaLookups = {
+    spl: createLookup(delta?.frequency_hz, delta?.spl_delta_db),
+    phase: createLookup(delta?.frequency_hz, delta?.phase_delta_deg),
+    impedance: createLookup(delta?.frequency_hz, delta?.impedance_delta_ohm),
+    thd: createLookup(delta?.frequency_hz, delta?.thd_delta_percent),
+  }
+
+  const calibratedPredictionLookups = {
+    spl: createLookup(calibratedPrediction?.frequency_hz, calibratedPrediction?.spl_db),
+    phase: createLookup(calibratedPrediction?.frequency_hz, calibratedPrediction?.phase_deg),
+    impReal: createLookup(calibratedPrediction?.frequency_hz, calibratedPrediction?.impedance_real),
+    impImag: createLookup(calibratedPrediction?.frequency_hz, calibratedPrediction?.impedance_imag),
+    thd: createLookup(calibratedPrediction?.frequency_hz, calibratedPrediction?.thd_percent),
+  }
+
+  const calibratedDeltaLookups = {
+    spl: createLookup(calibratedDelta?.frequency_hz, calibratedDelta?.spl_delta_db),
+    phase: createLookup(calibratedDelta?.frequency_hz, calibratedDelta?.phase_delta_deg),
+    impedance: createLookup(calibratedDelta?.frequency_hz, calibratedDelta?.impedance_delta_ohm),
+    thd: createLookup(calibratedDelta?.frequency_hz, calibratedDelta?.thd_delta_percent),
+  }
+
+  const columns: Column[] = [
+    {
+      header: 'frequency_hz',
+      getter: (_index, frequency) => (Number.isFinite(frequency) ? frequency : null),
+    },
+    {
+      header: 'measurement_spl_db',
+      getter: (index) => valueAt(measurement.spl_db, index),
+    },
+    {
+      header: 'prediction_spl_db',
+      getter: (index, frequency) => lookupValue(index, frequency, prediction?.spl_db, predictionLookups.spl),
+    },
+    {
+      header: 'delta_spl_db',
+      getter: (index, frequency) => lookupValue(index, frequency, delta?.spl_delta_db, deltaLookups.spl),
+    },
+    {
+      header: 'measurement_phase_deg',
+      getter: (index) => valueAt(measurement.phase_deg, index),
+    },
+    {
+      header: 'prediction_phase_deg',
+      getter: (index, frequency) => lookupValue(index, frequency, prediction?.phase_deg, predictionLookups.phase),
+    },
+    {
+      header: 'delta_phase_deg',
+      getter: (index, frequency) => lookupValue(index, frequency, delta?.phase_delta_deg, deltaLookups.phase),
+    },
+    {
+      header: 'measurement_impedance_real_ohm',
+      getter: (index) => valueAt(measurement.impedance_real, index),
+    },
+    {
+      header: 'measurement_impedance_imag_ohm',
+      getter: (index) => valueAt(measurement.impedance_imag, index),
+    },
+    {
+      header: 'measurement_impedance_magnitude_ohm',
+      getter: (index) => magnitude(valueAt(measurement.impedance_real, index), valueAt(measurement.impedance_imag, index)),
+    },
+    {
+      header: 'prediction_impedance_real_ohm',
+      getter: (index, frequency) => lookupValue(index, frequency, prediction?.impedance_real, predictionLookups.impReal),
+    },
+    {
+      header: 'prediction_impedance_imag_ohm',
+      getter: (index, frequency) => lookupValue(index, frequency, prediction?.impedance_imag, predictionLookups.impImag),
+    },
+    {
+      header: 'prediction_impedance_magnitude_ohm',
+      getter: (index, frequency) => {
+        const real = lookupValue(index, frequency, prediction?.impedance_real, predictionLookups.impReal)
+        const imag = lookupValue(index, frequency, prediction?.impedance_imag, predictionLookups.impImag)
+        return magnitude(real, imag)
+      },
+    },
+    {
+      header: 'delta_impedance_magnitude_ohm',
+      getter: (index, frequency) => lookupValue(index, frequency, delta?.impedance_delta_ohm, deltaLookups.impedance),
+    },
+    {
+      header: 'measurement_thd_percent',
+      getter: (index) => valueAt(measurement.thd_percent, index),
+    },
+    {
+      header: 'prediction_thd_percent',
+      getter: (index, frequency) => lookupValue(index, frequency, prediction?.thd_percent, predictionLookups.thd),
+    },
+    {
+      header: 'delta_thd_percent',
+      getter: (index, frequency) => lookupValue(index, frequency, delta?.thd_delta_percent, deltaLookups.thd),
+    },
+  ]
+
+  if (calibratedPrediction) {
+    columns.push(
+      {
+        header: 'calibrated_prediction_spl_db',
+        getter: (index, frequency) =>
+          lookupValue(index, frequency, calibratedPrediction.spl_db, calibratedPredictionLookups.spl),
+      },
+      {
+        header: 'calibrated_prediction_phase_deg',
+        getter: (index, frequency) =>
+          lookupValue(index, frequency, calibratedPrediction.phase_deg, calibratedPredictionLookups.phase),
+      },
+      {
+        header: 'calibrated_prediction_impedance_real_ohm',
+        getter: (index, frequency) =>
+          lookupValue(index, frequency, calibratedPrediction.impedance_real, calibratedPredictionLookups.impReal),
+      },
+      {
+        header: 'calibrated_prediction_impedance_imag_ohm',
+        getter: (index, frequency) =>
+          lookupValue(index, frequency, calibratedPrediction.impedance_imag, calibratedPredictionLookups.impImag),
+      },
+      {
+        header: 'calibrated_prediction_impedance_magnitude_ohm',
+        getter: (index, frequency) => {
+          const real = lookupValue(index, frequency, calibratedPrediction.impedance_real, calibratedPredictionLookups.impReal)
+          const imag = lookupValue(index, frequency, calibratedPrediction.impedance_imag, calibratedPredictionLookups.impImag)
+          return magnitude(real, imag)
+        },
+      },
+      {
+        header: 'calibrated_prediction_thd_percent',
+        getter: (index, frequency) =>
+          lookupValue(index, frequency, calibratedPrediction.thd_percent, calibratedPredictionLookups.thd),
+      },
+    )
+  }
+
+  if (calibratedDelta) {
+    columns.push(
+      {
+        header: 'calibrated_delta_spl_db',
+        getter: (index, frequency) => lookupValue(index, frequency, calibratedDelta.spl_delta_db, calibratedDeltaLookups.spl),
+      },
+      {
+        header: 'calibrated_delta_phase_deg',
+        getter: (index, frequency) =>
+          lookupValue(index, frequency, calibratedDelta.phase_delta_deg, calibratedDeltaLookups.phase),
+      },
+      {
+        header: 'calibrated_delta_impedance_magnitude_ohm',
+        getter: (index, frequency) =>
+          lookupValue(index, frequency, calibratedDelta.impedance_delta_ohm, calibratedDeltaLookups.impedance),
+      },
+      {
+        header: 'calibrated_delta_thd_percent',
+        getter: (index, frequency) => lookupValue(index, frequency, calibratedDelta.thd_delta_percent, calibratedDeltaLookups.thd),
+      },
+    )
+  }
+
+  const header = columns.map((column) => column.header).join(',')
+  const rows: string[] = [header]
+
+  for (let index = 0; index < frequencyAxis.length; index += 1) {
+    const frequency = frequencyAxis[index]
+    const values = columns.map((column) => csvValue(column.getter(index, frequency)))
+    rows.push(values.join(','))
+  }
+
+  return rows.join('\n')
 }
