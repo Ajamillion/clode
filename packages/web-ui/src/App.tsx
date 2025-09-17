@@ -6,6 +6,7 @@ import { OptimizationHUD } from '@components/OptimizationHUD'
 import { RunHistoryPanel } from '@components/RunHistoryPanel'
 import { ResponseSpectraPanel } from '@components/ResponseSpectraPanel'
 import { TolerancePanel } from '@components/TolerancePanel'
+import { MeasurementPanel } from '@components/MeasurementPanel'
 import type { MeshData, AcousticNode } from '@types/index'
 
 const demoMesh: MeshData = {
@@ -35,6 +36,7 @@ export default function App() {
       <OptimizationHUD />
       <RunHistoryPanel />
       <ResponseSpectraPanel />
+      <MeasurementPanel />
       <TolerancePanel />
     </div>
   )

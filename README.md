@@ -17,6 +17,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Monte Carlo tolerance analysis surfaced through new sealed/vented endpoints for manufacturing risk estimates
 - ✅ Studio tolerance panel streaming Monte Carlo excursion/velocity risk snapshots from the gateway
 - ✅ Measurement ingestion scaffolding with Klippel/REW parsers and FastAPI comparison endpoints for SPL/impedance deltas
+- ✅ Studio measurement panel that previews uploads or synthesised traces and compares SPL/impedance deltas against solver predictions
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites
@@ -67,7 +68,7 @@ Additional services (gateway, simulation core, CLI) will be added following the 
 
 ## Next Steps
 - Close out the multi-resolution optimisation ladder by wiring differential evolution search and adjoint refinement into the persisted run workflow.
-- Extend the measurement ingestion scaffolding to feed Bayesian calibration and Studio overlays for SPL/impedance discrepancies.
+- Extend the measurement ingestion scaffolding into Bayesian calibration so the new comparison panel can close the solver feedback loop automatically.
 - Extend the FastAPI gateway with export/download and measurement upload endpoints, and surface the richer traces through Studio SPL/impedance charts.
 - Add CI automation (GitHub Actions) that runs pnpm lint/typecheck/test plus the Python suite and publishes tolerance snapshots.
 

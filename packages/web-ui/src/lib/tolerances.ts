@@ -2,7 +2,7 @@ import type { OptimizationRun, ToleranceReport, ToleranceMetricStats } from '@ty
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
-const DEFAULT_DRIVER = {
+export const DEFAULT_DRIVER = {
   fs_hz: 32,
   qts: 0.39,
   vas_l: 75,
@@ -23,7 +23,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
-function ventedPortDesign(volume: number) {
+export function ventedPortDesign(volume: number) {
   const safeVolume = Math.max(volume, 10)
   let diameter = clamp(0.0018 * safeVolume + 0.065, 0.06, 0.15)
   const area = Math.PI * (diameter / 2) ** 2

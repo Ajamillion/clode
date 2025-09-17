@@ -53,6 +53,122 @@ function buildSummary(traces) {
   }
 }
 
+function buildMeasurementFromTraces(traces) {
+  const spl = traces.spl_db.map((value, idx) => value - 1.2 + Math.sin(idx / 5) * 0.9)
+  const impedanceReal = traces.impedance_real?.map((value, idx) => value * (0.95 + 0.03 * Math.sin(idx / 8)))
+  const impedanceImag = traces.impedance_imag?.map((value, idx) => value * (0.9 + 0.05 * Math.cos(idx / 10)))
+  return {
+    frequency_hz: [...traces.frequency_hz],
+    spl_db: spl,
+    impedance_real: impedanceReal,
+    impedance_imag: impedanceImag,
+  }
+}
+
+function normaliseMeasurementPayload(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  const freqRaw = Array.isArray(payload.frequency_hz) ? payload.frequency_hz : null
+  if (!freqRaw || freqRaw.length === 0) return null
+  const frequency = freqRaw.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+  if (!frequency.length) return null
+  const length = frequency.length
+  const clone = (values, fallback = []) => {
+    if (!Array.isArray(values) || !values.length) return [...fallback].slice(0, length)
+    return values
+      .slice(0, length)
+      .map((value) => Number(value))
+      .map((value) => (Number.isFinite(value) ? value : 0))
+  }
+  const splFallback = Array.from({ length }, (_, idx) => 100 - Math.log2(idx + 2))
+  const measurement = {
+    frequency_hz: frequency,
+    spl_db: clone(payload.spl_db, splFallback),
+  }
+  if (Array.isArray(payload.impedance_real) && Array.isArray(payload.impedance_imag)) {
+    measurement.impedance_real = clone(payload.impedance_real)
+    measurement.impedance_imag = clone(payload.impedance_imag)
+  }
+  return measurement
+}
+
+function buildPredictionForMeasurement(measurement) {
+  const { frequency_hz: frequency, spl_db: spl } = measurement
+  const predictedSpl = spl.map((value, idx) => value + 0.85 - 1.1 * Math.exp(-idx / 28))
+  let impedanceReal
+  let impedanceImag
+  if (measurement.impedance_real && measurement.impedance_imag) {
+    impedanceReal = measurement.impedance_real.map((value, idx) => value * (1.02 - 0.04 * Math.sin(idx / 9)))
+    impedanceImag = measurement.impedance_imag.map((value, idx) => value * (0.96 - 0.05 * Math.cos(idx / 11)))
+  }
+  return {
+    frequency_hz: [...frequency],
+    spl_db: predictedSpl,
+    impedance_real: impedanceReal,
+    impedance_imag: impedanceImag,
+  }
+}
+
+function computeDelta(measurement, prediction) {
+  const length = Math.min(measurement.frequency_hz.length, prediction.spl_db.length)
+  const frequency = measurement.frequency_hz.slice(0, length)
+  const splDelta = Array.from({ length }, (_, idx) => {
+    const measured = measurement.spl_db[idx] ?? 0
+    const predicted = prediction.spl_db[idx] ?? 0
+    return measured - predicted
+  })
+  let impedanceDelta
+  if (
+    measurement.impedance_real &&
+    measurement.impedance_imag &&
+    prediction.impedance_real &&
+    prediction.impedance_imag
+  ) {
+    impedanceDelta = Array.from({ length }, (_, idx) => {
+      const mMag = Math.hypot(measurement.impedance_real[idx], measurement.impedance_imag[idx])
+      const pMag = Math.hypot(prediction.impedance_real[idx], prediction.impedance_imag[idx])
+      return mMag - pMag
+    })
+  }
+  return {
+    frequency_hz: frequency,
+    spl_delta_db: splDelta,
+    impedance_delta_ohm: impedanceDelta,
+  }
+}
+
+function computeRmse(values) {
+  if (!values || !values.length) return null
+  const mean = values.reduce((sum, value) => sum + value * value, 0) / values.length
+  return Math.sqrt(mean)
+}
+
+function computeMean(values) {
+  if (!values || !values.length) return null
+  const sum = values.reduce((total, value) => total + value, 0)
+  return sum / values.length
+}
+
+function computeMaxAbs(values) {
+  if (!values || !values.length) return null
+  let max = 0
+  for (const value of values) {
+    const abs = Math.abs(value)
+    if (abs > max) max = abs
+  }
+  return max
+}
+
+function buildMeasurementStats(delta) {
+  return {
+    sample_count: delta.frequency_hz.length,
+    spl_rmse_db: computeRmse(delta.spl_delta_db),
+    spl_bias_db: computeMean(delta.spl_delta_db),
+    max_spl_delta_db: computeMaxAbs(delta.spl_delta_db),
+    phase_rmse_deg: null,
+    impedance_mag_rmse_ohm: computeRmse(delta.impedance_delta_ohm),
+  }
+}
+
 function broadcast(message) {
   const payload = typeof message === 'string' ? message : pack(message)
   for (const socket of sockets) {
@@ -215,6 +331,42 @@ const server = http.createServer((req, res) => {
       return
     }
     sendJson(res, 200, runs.get(id))
+    return
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/measurements/preview') {
+    req.on('data', () => {})
+    req.on('end', () => {
+      const traces = buildResponseTraces(80)
+      const measurement = buildMeasurementFromTraces(traces)
+      sendJson(res, 200, { measurement })
+    })
+    return
+  }
+
+  if (
+    req.method === 'POST' &&
+    (url.pathname === '/api/measurements/sealed/compare' || url.pathname === '/api/measurements/vented/compare')
+  ) {
+    let body = ''
+    req.on('data', (chunk) => { body += chunk })
+    req.on('end', () => {
+      let payload
+      try {
+        payload = body ? JSON.parse(body) : {}
+      } catch (error) {
+        sendJson(res, 400, { error: 'invalid measurement payload' })
+        return
+      }
+      const baseTraces = buildResponseTraces(90)
+      const fallback = buildMeasurementFromTraces(baseTraces)
+      const measurement = normaliseMeasurementPayload(payload?.measurement) ?? fallback
+      const prediction = buildPredictionForMeasurement(measurement)
+      const delta = computeDelta(measurement, prediction)
+      const stats = buildMeasurementStats(delta)
+      const summary = buildSummary(baseTraces)
+      sendJson(res, 200, { summary, prediction, delta, stats })
+    })
     return
   }
 

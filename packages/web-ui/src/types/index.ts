@@ -84,3 +84,36 @@ export type ToleranceReport = {
   worst_case_spl_delta_db?: number | null
   metrics: Record<string, ToleranceMetricStats>
 }
+
+export type MeasurementTrace = {
+  frequency_hz: number[]
+  spl_db?: number[]
+  phase_deg?: number[]
+  impedance_real?: number[]
+  impedance_imag?: number[]
+  thd_percent?: number[]
+}
+
+export type MeasurementDelta = {
+  frequency_hz: number[]
+  spl_delta_db?: number[]
+  phase_delta_deg?: number[]
+  impedance_delta_ohm?: number[]
+  thd_delta_percent?: number[]
+}
+
+export type MeasurementStats = {
+  sample_count: number
+  spl_rmse_db?: number | null
+  spl_bias_db?: number | null
+  max_spl_delta_db?: number | null
+  phase_rmse_deg?: number | null
+  impedance_mag_rmse_ohm?: number | null
+}
+
+export type MeasurementComparison = {
+  summary?: Record<string, number | null>
+  prediction?: MeasurementTrace | null
+  delta?: MeasurementDelta | null
+  stats?: MeasurementStats | null
+}
