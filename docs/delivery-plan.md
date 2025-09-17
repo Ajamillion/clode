@@ -89,12 +89,12 @@ preserving the long-term vision.
 | **M3 – High-Fidelity Solvers** | Month 6 | FEM/BEM coupling prototype, nonlinear extensions, Monte Carlo tolerance engine, Playwright + pytest integration tests, Docker Compose deployment. |
 | **M4 – Platform Hardening** | Month 9 | Cloud orchestration, offline cache packaging, metamaterial/active modules behind feature flags, observability dashboards, documentation for v1.0 release. |
 
-## Progress Snapshot (Iteration 12)
+## Progress Snapshot (Iteration 13)
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
-- **Milestone M2 – Optimisation Loop:** ~80 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, and tolerance sweeps now provide an end-to-end optimisation timeline backed by the gateway.
-- **Overall programme:** ≈47.5 % toward the v1.0 roadmap ((1.0 + 0.8 + 0.1 + 0) ÷ 4 milestones).
-- Latest iteration delivered measurement ingestion utilities with Klippel/REW parsers, FastAPI preview/compare endpoints, and SPL/impedance delta statistics to validate solver predictions alongside the Monte Carlo tooling from prior work.
+- **Milestone M2 – Optimisation Loop:** ~90 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, and the new Studio tolerance panel now provide an end-to-end optimisation timeline backed by the gateway.
+- **Overall programme:** ≈50 % toward the v1.0 roadmap ((1.0 + 0.9 + 0.1 + 0) ÷ 4 milestones).
+- Latest iteration added a tolerance snapshot overlay in the Studio client that streams Monte Carlo excursion/velocity risk directly from the gateway, closing the loop on the manufacturing risk visualisation backlog.
 
 ## 4. Completion Strategy
 
@@ -112,9 +112,9 @@ preserving the long-term vision.
    - ➡️ Add export/download endpoints once geometry serializers land.
    - ✅ Introduce measurement upload endpoints wiring through to the simulation core ingestion queue.
 3. **Studio Integration**
-   - ➡️ Render SPL/impedance plots from gateway responses with historical overlays.
+   - ✅ Render SPL/impedance plots from gateway responses with historical overlays.
    - ✅ Surface solver alignment metadata (Fc/Fb, excursion margins) in HUD with run history timeline and status chips.
-   - ➡️ Add tolerance visualisations (box plots + risk callouts) mirroring the new Monte Carlo API outputs.
+   - ✅ Add tolerance visualisations (risk callouts driven by Monte Carlo sweeps) mirroring the new gateway outputs.
 4. **Tooling & QA**
    - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root `pnpm` scripts.
    - ➡️ Author GitHub Actions workflow running JS + Python unit suites and publishing Monte Carlo/tolerance snapshots as artefacts.

@@ -64,7 +64,7 @@
 - Vite + React + Zustand for state management.
 - Three.js-based enclosure viewer fed by gateway mesh snapshots.
 - Uses TanStack Query for API calls, Msgpack WebSocket stream for telemetry.
-- Pluggable data panels (SPL curve, impedance, constraint ledger) plus optimisation HUD with alignment toggles and run history timeline fed by persisted run APIs.
+- Pluggable data panels (SPL curve, impedance, tolerance risk snapshots) plus optimisation HUD with alignment toggles and run history timeline fed by persisted run APIs.
 
 ### 4.5 CLI (`apps/cli`)
 - Node-based CLI (ts-node / bun) bundling the SDK.

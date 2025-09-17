@@ -15,6 +15,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ FastAPI optimisation run API with SQLite-backed persistence and background solver tasks
 - ✅ Run history API with status aggregates powering the Studio timeline panel and alignment toggles
 - ✅ Monte Carlo tolerance analysis surfaced through new sealed/vented endpoints for manufacturing risk estimates
+- ✅ Studio tolerance panel streaming Monte Carlo excursion/velocity risk snapshots from the gateway
 - ✅ Measurement ingestion scaffolding with Klippel/REW parsers and FastAPI comparison endpoints for SPL/impedance deltas
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 

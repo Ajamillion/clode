@@ -62,3 +62,25 @@ export type RunStats = {
   total: number
   counts: RunStatusCounts
 }
+
+export type ToleranceMetricStats = {
+  mean: number
+  stddev: number
+  min: number
+  max: number
+  p05: number
+  p95: number
+}
+
+export type ToleranceReport = {
+  alignment: string
+  runs: number
+  baseline: Record<string, number | null>
+  tolerances: Record<string, number>
+  excursion_limit_ratio: number
+  excursion_exceedance_rate: number
+  port_velocity_limit_ms?: number | null
+  port_velocity_exceedance_rate?: number | null
+  worst_case_spl_delta_db?: number | null
+  metrics: Record<string, ToleranceMetricStats>
+}

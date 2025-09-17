@@ -5,6 +5,7 @@ import { EnclosureRenderer } from '@core/EnclosureRenderer'
 import { OptimizationHUD } from '@components/OptimizationHUD'
 import { RunHistoryPanel } from '@components/RunHistoryPanel'
 import { ResponseSpectraPanel } from '@components/ResponseSpectraPanel'
+import { TolerancePanel } from '@components/TolerancePanel'
 import type { MeshData, AcousticNode } from '@types/index'
 
 const demoMesh: MeshData = {
@@ -34,6 +35,7 @@ export default function App() {
       <OptimizationHUD />
       <RunHistoryPanel />
       <ResponseSpectraPanel />
+      <TolerancePanel />
     </div>
   )
 }
