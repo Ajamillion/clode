@@ -15,6 +15,8 @@ from .calibration import (
     CalibrationPrior,
     CalibrationUpdate,
     ParameterPrior,
+    apply_calibration_overrides_to_box,
+    apply_calibration_overrides_to_drive_voltage,
     derive_calibration_overrides,
     derive_calibration_update,
 )
@@ -104,6 +106,8 @@ __all__ = [
     "CalibrationOverrides",
     "CalibrationUpdate",
     "DEFAULT_CALIBRATION_PRIOR",
+    "apply_calibration_overrides_to_box",
+    "apply_calibration_overrides_to_drive_voltage",
     "derive_calibration_overrides",
     "derive_calibration_update",
 ]

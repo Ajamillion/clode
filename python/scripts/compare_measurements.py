@@ -8,6 +8,7 @@ import math
 import pathlib
 import sys
 from collections.abc import Mapping, Sequence
+from typing import cast
 
 SCRIPT_PATH = pathlib.Path(__file__).resolve()
 PYTHON_ROOT = SCRIPT_PATH.parent.parent
@@ -26,6 +27,8 @@ from spl_core import (  # noqa: E402 - path adjusted above
     SealedBoxSolver,
     VentedBoxDesign,
     VentedBoxSolver,
+    apply_calibration_overrides_to_box,
+    apply_calibration_overrides_to_drive_voltage,
     compare_measurement_to_prediction,
     derive_calibration_overrides,
     derive_calibration_update,
@@ -208,6 +211,26 @@ def build_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         help="Write solver override recommendations derived from calibration to JSON",
     )
+    parser.add_argument(
+        "--apply-overrides",
+        action="store_true",
+        help="Re-run the solver using derived calibration overrides to preview corrected stats",
+    )
+    parser.add_argument(
+        "--calibrated-stats-output",
+        type=pathlib.Path,
+        help="Write stats for the calibrated rerun to JSON",
+    )
+    parser.add_argument(
+        "--calibrated-delta-output",
+        type=pathlib.Path,
+        help="Write per-frequency deltas after applying calibration overrides",
+    )
+    parser.add_argument(
+        "--calibrated-diagnosis-output",
+        type=pathlib.Path,
+        help="Write diagnosis notes for the calibrated rerun",
+    )
     return parser
 
 
@@ -259,6 +282,54 @@ def main(argv: Sequence[str] | None = None) -> int:
     _write_json(args.calibration_output, calibration.to_dict(), args.pretty)
     _write_json(args.overrides_output, overrides.to_dict(), args.pretty)
 
+    calibrated_stats = None
+    calibrated_delta = None
+    calibrated_diagnosis = None
+    calibrated_drive = None
+    calibrated_box = None
+    calibrated_port_length = None
+
+    if args.apply_overrides:
+        calibrated_box = apply_calibration_overrides_to_box(solver.box, overrides)
+        calibrated_drive = apply_calibration_overrides_to_drive_voltage(solver.drive_voltage, overrides)
+
+        calibrated_solver: SealedBoxSolver | VentedBoxSolver
+        if isinstance(solver, SealedBoxSolver):
+            sealed_box = cast(BoxDesign, calibrated_box)
+            calibrated_solver = SealedBoxSolver(DEFAULT_DRIVER, sealed_box, drive_voltage=calibrated_drive)
+            calibrated_port_length = None
+        else:
+            vented_box = cast(VentedBoxDesign, calibrated_box)
+            calibrated_solver = VentedBoxSolver(
+                DEFAULT_DRIVER,
+                vented_box,
+                drive_voltage=calibrated_drive,
+            )
+            calibrated_port_length = vented_box.port.length_m
+
+        calibrated_prediction = measurement_from_response(calibrated_solver.frequency_response(axis, 1.0))
+        calibrated_delta, calibrated_stats, calibrated_diagnosis = compare_measurement_to_prediction(
+            measurement,
+            calibrated_prediction,
+            port_length_m=calibrated_port_length,
+        )
+
+        _write_json(
+            args.calibrated_delta_output,
+            calibrated_delta.to_dict(),
+            args.pretty,
+        )
+        _write_json(
+            args.calibrated_stats_output,
+            calibrated_stats.to_dict(),
+            args.pretty,
+        )
+        _write_json(
+            args.calibrated_diagnosis_output,
+            calibrated_diagnosis.to_dict(),
+            args.pretty,
+        )
+
     if args.json:
         payload = {
             "alignment": args.alignment,
@@ -267,6 +338,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "calibration": calibration.to_dict(),
             "calibration_overrides": overrides.to_dict(),
         }
+        if calibrated_stats and calibrated_delta and calibrated_diagnosis:
+            payload["calibrated"] = {
+                "drive_voltage_v": calibrated_drive,
+                "leakage_q": getattr(calibrated_box, "leakage_q", None) if calibrated_box else None,
+                "port_length_m": calibrated_port_length,
+                "stats": calibrated_stats.to_dict(),
+                "diagnosis": calibrated_diagnosis.to_dict(),
+                "delta": calibrated_delta.to_dict(),
+            }
         print(json.dumps(payload, indent=2 if args.pretty else None))
     else:
         print(f"Alignment: {args.alignment}")
@@ -327,6 +407,67 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Calibration notes:")
             for note in calibration.notes:
                 print(f"  - {note}")
+
+        if calibrated_stats and calibrated_delta and calibrated_diagnosis:
+            print("\nCalibrated rerun using derived overrides:")
+            base_drive = solver.drive_voltage
+            drive_scale = None
+            if base_drive > 0 and calibrated_drive:
+                drive_scale = calibrated_drive / base_drive
+            print(
+                "Calibrated drive voltage: "
+                f"{_format_float(calibrated_drive)} V"
+                f" ({_format_scale(drive_scale)})"
+            )
+            base_leakage = getattr(solver.box, "leakage_q", None)
+            calibrated_leakage = getattr(calibrated_box, "leakage_q", None) if calibrated_box else None
+            leakage_scale = None
+            if base_leakage and calibrated_leakage:
+                leakage_scale = calibrated_leakage / base_leakage if base_leakage > 0 else None
+            print(
+                "Calibrated leakage Q: "
+                f"{_format_float(calibrated_leakage)}"
+                f" ({_format_scale(leakage_scale)})"
+            )
+            if calibrated_port_length is not None:
+                base_port = port_length_m
+                port_scale = None
+                if base_port and base_port > 0:
+                    port_scale = calibrated_port_length / base_port
+                print(
+                    "Calibrated port length: "
+                    f"{_format_float(calibrated_port_length)} m"
+                    f" ({_format_scale(port_scale)})"
+                )
+            print(
+                "SPL RMSE after calibration: "
+                f"{_format_float(calibrated_stats.spl_rmse_db)} dB"
+                f" (was {_format_float(stats.spl_rmse_db)} dB)"
+            )
+            print(
+                "SPL bias after calibration: "
+                f"{_format_float(calibrated_stats.spl_bias_db)} dB"
+                f" (was {_format_float(stats.spl_bias_db)} dB)"
+            )
+            print(
+                "Max SPL delta after calibration: "
+                f"{_format_float(calibrated_stats.max_spl_delta_db)} dB"
+                f" (was {_format_float(stats.max_spl_delta_db)} dB)"
+            )
+            print(
+                "Phase RMSE after calibration: "
+                f"{_format_float(calibrated_stats.phase_rmse_deg)} °"
+                f" (was {_format_float(stats.phase_rmse_deg)} °)"
+            )
+            print(
+                "Impedance RMSE after calibration: "
+                f"{_format_float(calibrated_stats.impedance_mag_rmse_ohm)} Ω"
+                f" (was {_format_float(stats.impedance_mag_rmse_ohm)} Ω)"
+            )
+            if calibrated_diagnosis.notes:
+                print("Updated notes:")
+                for note in calibrated_diagnosis.notes:
+                    print(f"  - {note}")
 
     return 0
 

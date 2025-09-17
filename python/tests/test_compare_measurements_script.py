@@ -31,6 +31,10 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             calibration_path = pathlib.Path(tmpdir) / "calibration.json"
             overrides_path = pathlib.Path(tmpdir) / "overrides.json"
 
+            calibrated_stats_path = pathlib.Path(tmpdir) / "stats_calibrated.json"
+            calibrated_delta_path = pathlib.Path(tmpdir) / "delta_calibrated.json"
+            calibrated_diagnosis_path = pathlib.Path(tmpdir) / "diagnosis_calibrated.json"
+
             completed = subprocess.run(
                 [
                     sys.executable,
@@ -40,6 +44,7 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
                     "sealed",
                     "--json",
                     "--pretty",
+                    "--apply-overrides",
                     "--stats-output",
                     str(stats_path),
                     "--delta-output",
@@ -50,6 +55,12 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
                     str(calibration_path),
                     "--overrides-output",
                     str(overrides_path),
+                    "--calibrated-stats-output",
+                    str(calibrated_stats_path),
+                    "--calibrated-delta-output",
+                    str(calibrated_delta_path),
+                    "--calibrated-diagnosis-output",
+                    str(calibrated_diagnosis_path),
                 ],
                 check=True,
                 capture_output=True,
@@ -70,18 +81,33 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             overrides = payload["calibration_overrides"]
             self.assertIn("drive_voltage_scale", overrides)
             self.assertAlmostEqual(overrides["drive_voltage_scale"], 1.0, places=6)
+            calibrated = payload["calibrated"]
+            self.assertAlmostEqual(calibrated["drive_voltage_v"], solver.drive_voltage, places=6)
+            self.assertIn("stats", calibrated)
+            self.assertEqual(calibrated["stats"]["sample_count"], len(frequencies))
 
             stats_file = json.loads(stats_path.read_text(encoding="utf-8"))
             self.assertEqual(stats_file["sample_count"], len(frequencies))
+
+            calibrated_stats_file = json.loads(calibrated_stats_path.read_text(encoding="utf-8"))
+            self.assertEqual(calibrated_stats_file["sample_count"], len(frequencies))
 
             delta_file = json.loads(delta_path.read_text(encoding="utf-8"))
             self.assertEqual(len(delta_file["frequency_hz"]), len(frequencies))
             for value in delta_file["spl_delta_db"]:
                 self.assertAlmostEqual(value, 0.0, places=7)
 
+            calibrated_delta_file = json.loads(calibrated_delta_path.read_text(encoding="utf-8"))
+            self.assertEqual(len(calibrated_delta_file["frequency_hz"]), len(frequencies))
+            for value in calibrated_delta_file["spl_delta_db"]:
+                self.assertAlmostEqual(value, 0.0, places=7)
+
             diagnosis_file = json.loads(diagnosis_path.read_text(encoding="utf-8"))
             self.assertIn("notes", diagnosis_file)
             self.assertIn("recommended_level_trim_db", diagnosis_file)
+
+            calibrated_diagnosis_file = json.loads(calibrated_diagnosis_path.read_text(encoding="utf-8"))
+            self.assertIn("notes", calibrated_diagnosis_file)
 
             calibration_file = json.loads(calibration_path.read_text(encoding="utf-8"))
             self.assertIn("level_trim_db", calibration_file)

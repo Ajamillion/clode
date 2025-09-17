@@ -108,6 +108,7 @@ preserving the long-term vision.
    - ✅ Introduce Monte Carlo tolerance sweeps for sealed and vented alignments with REST reporting.
    - ✅ Land measurement ingestion scaffolding (Klippel/REW parsers) feeding the tolerance and calibration loops.
    - ✅ Convert measurement heuristics into Bayesian calibration posteriors surfaced through the CLI, gateway, and Studio.
+   - ✅ Automate calibration override reruns from the CLI so measurement comparisons can preview corrected solver fits.
 2. **Gateway Evolution**
    - ✅ Replace optional FastAPI shim with concrete app, including async task manager and SQLite persistence.
    - ✅ Define WebSocket protocol aligning with Studio’s optimisation HUD.

@@ -118,4 +118,6 @@ pnpm py:compare -- path/to/measurement.mdat --alignment vented --volume 62 --dri
 
 The command prints a human-readable summary by default; pass `--json` for machine-readable output. Optional flags mirror the gateway defaults so Studio results and CLI analyses stay aligned.
 
+Add `--apply-overrides` to trigger a second solver run that applies the derived calibration overrides and reports the corrected SPL, phase, and impedance errors. When enabled you can capture the calibrated metrics via `--calibrated-stats-output`, `--calibrated-delta-output`, and `--calibrated-diagnosis-output` alongside the baseline results.
+
 Diagnosis output highlights systematic biases: low/mid/high-band SPL offsets, suggested global level trims, tuning shifts with estimated port-length adjustments, leakage hints, and a note stack summarising the most actionable insights. Calibration payloads provide Bayesian posteriors with 95 % credible intervals for the recommended level trims, port length scaling, and leakage-Q multipliers.

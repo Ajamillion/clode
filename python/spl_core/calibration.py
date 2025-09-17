@@ -5,8 +5,9 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, overload
 
+from .drivers import BoxDesign, PortGeometry, VentedBoxDesign
 from .measurements import MeasurementDiagnosis
 
 
@@ -178,6 +179,86 @@ def derive_calibration_overrides(
     )
 
 
+def apply_calibration_overrides_to_drive_voltage(
+    base_voltage_v: float, overrides: CalibrationOverrides | None
+) -> float:
+    """Project drive-voltage overrides onto a concrete solver input.
+
+    The helper favours absolute voltage recommendations when present and falls back
+    to multiplicative scaling. Invalid or non-positive suggestions are ignored so the
+    original drive level is preserved.
+    """
+
+    if overrides is None:
+        return base_voltage_v
+
+    candidate = overrides.drive_voltage_v
+    if candidate is None and overrides.drive_voltage_scale is not None:
+        scale = overrides.drive_voltage_scale
+        if math.isfinite(scale) and scale > 0:
+            candidate = base_voltage_v * scale
+
+    if candidate is None or not math.isfinite(candidate) or candidate <= 0:
+        return base_voltage_v
+    return float(candidate)
+
+
+@overload
+def apply_calibration_overrides_to_box(
+    box: BoxDesign, overrides: CalibrationOverrides | None
+) -> BoxDesign:
+    ...
+
+
+@overload
+def apply_calibration_overrides_to_box(
+    box: VentedBoxDesign, overrides: CalibrationOverrides | None
+) -> VentedBoxDesign:
+    ...
+
+
+def apply_calibration_overrides_to_box(
+    box: BoxDesign | VentedBoxDesign, overrides: CalibrationOverrides | None
+) -> BoxDesign | VentedBoxDesign:
+    """Return a copy of ``box`` with calibration overrides applied.
+
+    Only the parameters that can be corrected via measurement feedback are touched:
+    leakage ``Q`` for both alignments and port length for vented boxes. Unknown or
+    invalid override suggestions fall back to the original geometry.
+    """
+
+    if overrides is None:
+        return box
+
+    leakage_q = _resolved_positive(
+        getattr(box, "leakage_q", 0.0),
+        overrides.leakage_q,
+        overrides.leakage_q_scale,
+    )
+
+    if isinstance(box, VentedBoxDesign):
+        port = box.port
+        length = _resolved_positive(
+            port.length_m,
+            overrides.port_length_m,
+            overrides.port_length_scale,
+        )
+        updated_port = PortGeometry(
+            diameter_m=port.diameter_m,
+            length_m=length,
+            count=port.count,
+            flare_factor=port.flare_factor,
+            loss_q=port.loss_q,
+        )
+        return VentedBoxDesign(
+            volume_l=box.volume_l,
+            port=updated_port,
+            leakage_q=leakage_q,
+        )
+
+    return BoxDesign(volume_l=box.volume_l, leakage_q=leakage_q)
+
+
 def _update_level_trim(
     diagnosis: MeasurementDiagnosis, prior: ParameterPrior
 ) -> CalibrationParameter | None:
@@ -280,6 +361,18 @@ def _scaled_value(base: float | None, scale: float | None) -> float | None:
         return None
     value = base * scale
     return value if math.isfinite(value) and value > 0 else None
+
+
+def _resolved_positive(base: float, value: float | None, scale: float | None) -> float:
+    """Return a positive override if suggested, otherwise fall back to ``base``."""
+
+    candidate = value if value is not None else None
+    if candidate is None and scale is not None and math.isfinite(scale) and scale > 0:
+        candidate = base * scale
+
+    if candidate is None or not math.isfinite(candidate) or candidate <= 0:
+        return float(base)
+    return float(candidate)
 
 
 def _gaussian_update(

@@ -7,9 +7,12 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 from spl_core.calibration import (
     CalibrationOverrides,
     CalibrationPrior,
+    apply_calibration_overrides_to_box,
+    apply_calibration_overrides_to_drive_voltage,
     derive_calibration_overrides,
     derive_calibration_update,
 )
+from spl_core.drivers import BoxDesign, PortGeometry, VentedBoxDesign
 from spl_core.measurements import MeasurementDiagnosis
 
 
@@ -178,6 +181,60 @@ class CalibrationUpdateTests(unittest.TestCase):
         self.assertIsNone(overrides.port_length_m)
         self.assertIsNone(overrides.leakage_q_scale)
         self.assertIsNone(overrides.leakage_q)
+
+    def test_apply_overrides_projects_drive_and_geometry(self) -> None:
+        overrides = CalibrationOverrides(
+            drive_voltage_scale=0.75,
+            drive_voltage_v=2.0,
+            port_length_scale=1.1,
+            port_length_m=0.33,
+            leakage_q_scale=1.2,
+            leakage_q=18.0,
+        )
+
+        drive = apply_calibration_overrides_to_drive_voltage(2.83, overrides)
+        self.assertAlmostEqual(drive, 2.0)
+
+        sealed = BoxDesign(volume_l=50.0, leakage_q=12.0)
+        updated_sealed = apply_calibration_overrides_to_box(sealed, overrides)
+        self.assertIsNot(sealed, updated_sealed)
+        self.assertAlmostEqual(updated_sealed.leakage_q, 18.0)
+
+        vented = VentedBoxDesign(
+            volume_l=60.0,
+            leakage_q=9.0,
+            port=PortGeometry(diameter_m=0.08, length_m=0.25, count=1, flare_factor=1.6, loss_q=18.0),
+        )
+        updated_vented = apply_calibration_overrides_to_box(vented, overrides)
+        self.assertIsNot(vented, updated_vented)
+        self.assertAlmostEqual(updated_vented.leakage_q, 18.0)
+        self.assertAlmostEqual(updated_vented.port.length_m, 0.33)
+
+    def test_apply_overrides_ignores_invalid_suggestions(self) -> None:
+        overrides = CalibrationOverrides(
+            drive_voltage_scale=-1.0,
+            drive_voltage_v=-5.0,
+            port_length_scale=-2.0,
+            port_length_m=-0.2,
+            leakage_q_scale=0.0,
+            leakage_q=-3.0,
+        )
+
+        drive = apply_calibration_overrides_to_drive_voltage(2.83, overrides)
+        self.assertAlmostEqual(drive, 2.83)
+
+        sealed = BoxDesign(volume_l=40.0, leakage_q=11.0)
+        updated = apply_calibration_overrides_to_box(sealed, overrides)
+        self.assertAlmostEqual(updated.leakage_q, 11.0)
+
+        vented = VentedBoxDesign(
+            volume_l=45.0,
+            leakage_q=8.0,
+            port=PortGeometry(diameter_m=0.07, length_m=0.2, count=1, flare_factor=1.5, loss_q=16.0),
+        )
+        updated_vented = apply_calibration_overrides_to_box(vented, overrides)
+        self.assertAlmostEqual(updated_vented.leakage_q, 8.0)
+        self.assertAlmostEqual(updated_vented.port.length_m, 0.2)
 
 
 if __name__ == "__main__":  # pragma: no cover
