@@ -1,4 +1,5 @@
 import { useMemo, useRef, type ChangeEventHandler } from 'react'
+import { MeasurementComparisonChart } from '@components/MeasurementComparisonChart'
 import { useMeasurement } from '@stores/measurement.store'
 import { useOptimization } from '@stores/optimization.store'
 import type {
@@ -491,6 +492,7 @@ export function MeasurementPanel() {
                   )}
                 </div>
               )}
+              <MeasurementComparisonChart measurement={preview} comparison={comparison} />
               <button type="button" className="measurement__clear" onClick={() => clearComparison()}>
                 Clear comparison
               </button>
