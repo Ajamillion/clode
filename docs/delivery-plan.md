@@ -116,7 +116,7 @@ preserving the long-term vision.
 3. **Studio Integration**
    - ✅ Render SPL/impedance plots from gateway responses with historical overlays.
    - ✅ Surface solver alignment metadata (Fc/Fb, excursion margins) in HUD with run history timeline and status chips.
-   - ✅ Add tolerance visualisations (risk callouts driven by Monte Carlo sweeps) mirroring the new gateway outputs.
+   - ✅ Add tolerance visualisations (qualitative risk callouts driven by Monte Carlo sweeps) mirroring the new gateway outputs.
    - ✅ Introduce a measurement comparison panel that previews uploads/synthetic traces and charts solver deltas.
 4. **Tooling & QA**
    - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root `pnpm` scripts.

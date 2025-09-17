@@ -82,6 +82,8 @@ export type ToleranceReport = {
   port_velocity_limit_ms?: number | null
   port_velocity_exceedance_rate?: number | null
   worst_case_spl_delta_db?: number | null
+  risk_rating: 'low' | 'moderate' | 'high'
+  risk_factors: string[]
   metrics: Record<string, ToleranceMetricStats>
 }
 

@@ -167,6 +167,14 @@ export async function fetchToleranceReport(request: ToleranceRequest): Promise<T
       }
     }
   }
+  const ratingRaw = typeof payload?.risk_rating === 'string' ? payload.risk_rating : 'low'
+  const riskRating = (['low', 'moderate', 'high'] as const).includes(ratingRaw as any)
+    ? (ratingRaw as 'low' | 'moderate' | 'high')
+    : 'low'
+  const riskFactorsRaw = Array.isArray(payload?.risk_factors) ? payload?.risk_factors : []
+  const riskFactors = riskFactorsRaw
+    .map((item) => (typeof item === 'string' ? item : null))
+    .filter((item): item is string => Boolean(item))
   return {
     alignment: typeof payload?.alignment === 'string' ? payload.alignment : 'sealed',
     runs: Number(payload?.runs) || 0,
@@ -179,6 +187,8 @@ export async function fetchToleranceReport(request: ToleranceRequest): Promise<T
       typeof payload?.port_velocity_exceedance_rate === 'number' ? payload.port_velocity_exceedance_rate : null,
     worst_case_spl_delta_db:
       typeof payload?.worst_case_spl_delta_db === 'number' ? payload.worst_case_spl_delta_db : null,
+    risk_rating: riskRating,
+    risk_factors: riskFactors,
     metrics: normaliseMetrics(payload?.metrics),
   }
 }

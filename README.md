@@ -15,7 +15,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Python linting and type-checking automation wired into the pnpm workspace scripts
 - ✅ FastAPI optimisation run API with SQLite-backed persistence and background solver tasks
 - ✅ Run history API with status aggregates powering the Studio timeline panel and alignment toggles
-- ✅ Monte Carlo tolerance analysis surfaced through new sealed/vented endpoints for manufacturing risk estimates
+- ✅ Monte Carlo tolerance analysis surfaced through new sealed/vented endpoints with qualitative risk ratings for manufacturing risk estimates
 - ✅ Studio tolerance panel streaming Monte Carlo excursion/velocity risk snapshots from the gateway
 - ✅ Measurement ingestion scaffolding with Klippel/REW parsers and FastAPI comparison endpoints for SPL/impedance deltas
 - ✅ Studio measurement panel that previews uploads or synthesised traces and compares SPL/impedance deltas against solver predictions

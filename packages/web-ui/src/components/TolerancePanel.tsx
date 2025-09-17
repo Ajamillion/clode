@@ -28,6 +28,17 @@ function formatRange(stats: ToleranceMetricStats | undefined, unit: string) {
   return `${stats.p05.toFixed(1)} – ${stats.p95.toFixed(1)} ${unit}`
 }
 
+function riskLabel(rating: 'low' | 'moderate' | 'high') {
+  switch (rating) {
+    case 'high':
+      return 'High risk'
+    case 'moderate':
+      return 'Moderate risk'
+    default:
+      return 'Low risk'
+  }
+}
+
 export function TolerancePanel() {
   const selectedRunId = useOptimization((state) => state.selectedRunId)
   const recentRuns = useOptimization((state) => state.recentRuns)
@@ -108,6 +119,14 @@ export function TolerancePanel() {
   } else {
     body = (
       <div className="tolerance__content">
+        <div className={`tolerance__risk tolerance__risk--${report.risk_rating}`}>
+          <span className="tolerance__risk-label">{riskLabel(report.risk_rating)}</span>
+          <ul className="tolerance__risk-factors">
+            {(report.risk_factors.length ? report.risk_factors : ['No risk factors were flagged.']).map((factor) => (
+              <li key={factor}>{factor}</li>
+            ))}
+          </ul>
+        </div>
         <div className="tolerance__grid">
           <div>
             <div className="tolerance__label">Excursion exceedance</div>

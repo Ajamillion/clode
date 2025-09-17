@@ -100,6 +100,8 @@ class ToleranceReport:
     port_velocity_limit_ms: float | None
     port_velocity_exceedance_rate: float | None
     worst_case_spl_delta_db: float | None
+    risk_rating: str
+    risk_factors: tuple[str, ...]
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -112,6 +114,8 @@ class ToleranceReport:
             "port_velocity_limit_ms": self.port_velocity_limit_ms,
             "port_velocity_exceedance_rate": self.port_velocity_exceedance_rate,
             "worst_case_spl_delta_db": self.worst_case_spl_delta_db,
+            "risk_rating": self.risk_rating,
+            "risk_factors": list(self.risk_factors),
             "metrics": {name: stats.to_dict() for name, stats in self.metrics.items()},
         }
 
@@ -191,6 +195,66 @@ def _worst_case_delta(
     return float(base_max) - min(spl_values)
 
 
+def _assess_risk(
+    *,
+    excursion_rate: float,
+    excursion_limit_ratio: float,
+    port_velocity_rate: float | None,
+    port_velocity_limit_ms: float | None,
+    worst_case_delta_db: float | None,
+) -> tuple[str, tuple[str, ...]]:
+    """Classify the tolerance snapshot into a qualitative risk rating."""
+
+    levels = {"low": 0, "moderate": 1, "high": 2}
+    rating = "low"
+    factors: list[str] = []
+
+    def flag(level: str, message: str) -> None:
+        nonlocal rating
+        if levels[level] > levels[rating]:
+            rating = level
+        factors.append(message)
+
+    if excursion_rate >= 0.2:
+        flag(
+            "high",
+            f"{excursion_rate:.0%} of iterations exceeded the excursion limit ({excursion_limit_ratio:.2f}×).",
+        )
+    elif excursion_rate >= 0.05:
+        flag(
+            "moderate",
+            f"{excursion_rate:.0%} of iterations nudged past the excursion limit ({excursion_limit_ratio:.2f}×).",
+        )
+
+    if port_velocity_rate is not None and port_velocity_limit_ms is not None:
+        if port_velocity_rate >= 0.18:
+            flag(
+                "high",
+                f"{port_velocity_rate:.0%} of runs exceeded the {port_velocity_limit_ms:.1f} m/s port velocity limit.",
+            )
+        elif port_velocity_rate >= 0.08:
+            flag(
+                "moderate",
+                f"{port_velocity_rate:.0%} of runs approached the {port_velocity_limit_ms:.1f} m/s port velocity ceiling.",
+            )
+
+    if worst_case_delta_db is not None:
+        if worst_case_delta_db >= 3.0:
+            flag(
+                "high",
+                f"Worst-case SPL dropped by {worst_case_delta_db:.1f} dB across tolerance samples.",
+            )
+        elif worst_case_delta_db >= 1.5:
+            flag(
+                "moderate",
+                f"SPL varied by up to {worst_case_delta_db:.1f} dB across tolerance samples.",
+            )
+
+    if not factors:
+        factors.append("All monitored tolerance checks stayed within the configured limits.")
+    return rating, tuple(factors)
+
+
 def _sealed_report(
     driver: DriverParameters,
     design: BoxDesign,
@@ -233,6 +297,14 @@ def _sealed_report(
     worst_case_delta = _worst_case_delta(baseline_dict, metrics)
     excursion_rate = excursion_failures / iterations
 
+    risk_rating, risk_factors = _assess_risk(
+        excursion_rate=excursion_rate,
+        excursion_limit_ratio=excursion_limit_ratio,
+        port_velocity_rate=None,
+        port_velocity_limit_ms=None,
+        worst_case_delta_db=worst_case_delta,
+    )
+
     return ToleranceReport(
         alignment="sealed",
         runs=iterations,
@@ -244,6 +316,8 @@ def _sealed_report(
         port_velocity_limit_ms=None,
         port_velocity_exceedance_rate=None,
         worst_case_spl_delta_db=worst_case_delta,
+        risk_rating=risk_rating,
+        risk_factors=risk_factors,
     )
 
 
@@ -294,6 +368,14 @@ def _vented_report(
     excursion_rate = excursion_failures / iterations
     port_rate = None if port_velocity_limit_ms is None else port_failures / iterations
 
+    risk_rating, risk_factors = _assess_risk(
+        excursion_rate=excursion_rate,
+        excursion_limit_ratio=excursion_limit_ratio,
+        port_velocity_rate=port_rate,
+        port_velocity_limit_ms=port_velocity_limit_ms,
+        worst_case_delta_db=worst_case_delta,
+    )
+
     return ToleranceReport(
         alignment="vented",
         runs=iterations,
@@ -305,6 +387,8 @@ def _vented_report(
         port_velocity_limit_ms=port_velocity_limit_ms,
         port_velocity_exceedance_rate=port_rate,
         worst_case_spl_delta_db=worst_case_delta,
+        risk_rating=risk_rating,
+        risk_factors=risk_factors,
     )
 
 

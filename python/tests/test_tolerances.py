@@ -48,6 +48,8 @@ class ToleranceAnalysisTests(unittest.TestCase):
         self.assertIsNone(report.port_velocity_limit_ms)
         self.assertIsNone(report.port_velocity_exceedance_rate)
         self.assertIsNotNone(report.worst_case_spl_delta_db)
+        self.assertIn(report.risk_rating, {"low", "moderate", "high"})
+        self.assertGreater(len(report.risk_factors), 0)
 
     def test_vented_tolerance_analysis_flags_port_velocity(self) -> None:
         driver = DriverParameters(
@@ -84,6 +86,8 @@ class ToleranceAnalysisTests(unittest.TestCase):
         self.assertIsNotNone(report.port_velocity_exceedance_rate)
         self.assertGreater(report.port_velocity_exceedance_rate or 0.0, 0.0)
         self.assertGreater(report.metrics["max_port_velocity_ms"].maximum, 0.0)
+        self.assertIn(report.risk_rating, {"low", "moderate", "high"})
+        self.assertGreater(len(report.risk_factors), 0)
 
 
 if __name__ == "__main__":  # pragma: no cover
