@@ -10,7 +10,14 @@ from .acoustics.vented import (
     VentedBoxResponse,
     VentedBoxSolver,
 )
-from .drivers import BoxDesign, DriverParameters, PortGeometry, VentedBoxDesign
+from .drivers import (
+    DEFAULT_DRIVER,
+    BoxDesign,
+    DriverParameters,
+    PortGeometry,
+    VentedBoxDesign,
+    recommended_vented_alignment,
+)
 from .measurements import (
     MeasurementDelta,
     MeasurementStats,
@@ -43,6 +50,8 @@ __all__ = [
     "BoxDesign",
     "PortGeometry",
     "VentedBoxDesign",
+    "DEFAULT_DRIVER",
+    "recommended_vented_alignment",
     "SealedBoxSolver",
     "SealedBoxResponse",
     "SealedAlignmentSummary",

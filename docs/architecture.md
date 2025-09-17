@@ -41,7 +41,7 @@
   - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics, modal extensions queued) with hooks for FEM/BEM adapters.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis (initial sealed/vented sweep landed) and reciprocity/thermal sanity checks.
-  - `measurements`: Klippel/REW ingestion, trace alignment, and measurement-vs-simulation delta statistics.
+  - `measurements`: Klippel/REW ingestion, trace alignment, and measurement-vs-simulation delta statistics exposed through both the FastAPI endpoints and a standalone CLI.
   - `serialization`: JSON schema exports for solver requests/responses used by gateway + clients.
 - **API Surface**: Plain Python classes exported through pydantic models; zero global state.
 

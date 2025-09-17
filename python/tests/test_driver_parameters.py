@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
-from spl_core import DriverParameters
+from spl_core import DEFAULT_DRIVER, DriverParameters, recommended_vented_alignment
 
 
 class DriverParameterUtilitiesTest(unittest.TestCase):
@@ -51,6 +51,27 @@ class DriverParameterUtilitiesTest(unittest.TestCase):
 
     def test_xmax_conversion(self) -> None:
         self.assertAlmostEqual(self.driver.xmax_m(), 0.012, places=6)
+
+    def test_default_driver_matches_expected(self) -> None:
+        self.assertAlmostEqual(DEFAULT_DRIVER.fs_hz, 32.0)
+        self.assertAlmostEqual(DEFAULT_DRIVER.qts, 0.39)
+        self.assertAlmostEqual(DEFAULT_DRIVER.re_ohm, 3.2)
+        self.assertAlmostEqual(DEFAULT_DRIVER.bl_t_m, 15.5)
+        self.assertAlmostEqual(DEFAULT_DRIVER.mms_kg, 0.125)
+        self.assertAlmostEqual(DEFAULT_DRIVER.sd_m2, 0.052)
+        self.assertIsNotNone(DEFAULT_DRIVER.vas_l)
+        if DEFAULT_DRIVER.vas_l is not None:
+            self.assertAlmostEqual(DEFAULT_DRIVER.vas_l, 75.0)
+
+    def test_recommended_vented_alignment_scales_with_volume(self) -> None:
+        small = recommended_vented_alignment(30.0)
+        large = recommended_vented_alignment(120.0)
+
+        self.assertGreaterEqual(small.port.diameter_m, 0.06)
+        self.assertGreaterEqual(large.port.area_m2(), small.port.area_m2())
+        self.assertGreaterEqual(large.port.count, small.port.count)
+        self.assertAlmostEqual(small.port.flare_factor, 1.6)
+        self.assertAlmostEqual(large.port.flare_factor, 1.6)
 
 
 if __name__ == "__main__":

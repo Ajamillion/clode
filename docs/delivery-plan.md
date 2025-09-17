@@ -94,7 +94,7 @@ preserving the long-term vision.
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
 - **Milestone M2 – Optimisation Loop:** ~99 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, CI automation, and the new schema catalog endpoints/CLI now provide an end-to-end optimisation timeline backed by the gateway.
 - **Overall programme:** ≈53 % toward the v1.0 roadmap ((1.0 + 0.99 + 0.1 + 0) ÷ 4 milestones).
-- Latest iteration introduced solver schema catalog endpoints on the gateway plus a CLI helper that writes JSON files for downstream tooling, rounding out the typed integration story alongside the CI tolerance artefacts.
+- Latest iteration centralised the default driver/vented alignment heuristics inside `spl_core` and introduced a measurement comparison CLI that mirrors the gateway endpoints, enabling quick field-to-solver validation without standing up the API service.
 
 ## 4. Completion Strategy
 

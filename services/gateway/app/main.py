@@ -33,6 +33,7 @@ else:  # pragma: no branch
             return None
 
 from spl_core import (
+    DEFAULT_DRIVER,
     DEFAULT_TOLERANCES,
     BoxDesign,
     DriverParameters,
@@ -46,23 +47,12 @@ from spl_core import (
     measurement_from_response,
     parse_klippel_dat,
     parse_rew_mdat,
+    recommended_vented_alignment,
     run_tolerance_analysis,
     solver_json_schemas,
 )
 
 from .store import VALID_STATUSES, RunStore
-
-DEFAULT_DRIVER = DriverParameters(
-    fs_hz=32.0,
-    qts=0.39,
-    re_ohm=3.2,
-    bl_t_m=15.5,
-    mms_kg=0.125,
-    sd_m2=0.052,
-    vas_l=75.0,
-    le_h=0.0007,
-    xmax_mm=12.0,
-)
 
 DEFAULT_FREQUENCY_RANGE = (math.log10(20.0), math.log10(200.0), 60)
 DEFAULT_ALIGNMENT = "sealed"
@@ -142,27 +132,6 @@ def _resolve_alignment(params: dict[str, Any]) -> str:
     return DEFAULT_ALIGNMENT
 
 
-def _vented_design(volume_l: float) -> VentedBoxDesign:
-    volume = max(volume_l, 10.0)
-    diameter = max(0.06, min(0.15, 0.0018 * volume + 0.065))
-    port_area = math.pi * (diameter / 2) ** 2
-    count = 2 if volume >= 85.0 else 1
-    if count > 1:
-        diameter = math.sqrt(port_area / count / math.pi) * 2
-    length = max(0.16, min(0.48, 0.0032 * volume + 0.18))
-    return VentedBoxDesign(
-        volume_l=volume,
-        port=PortGeometry(
-            diameter_m=diameter,
-            length_m=length,
-            count=count,
-            flare_factor=1.6,
-            loss_q=18.0,
-        ),
-        leakage_q=9.5,
-    )
-
-
 def _build_optimisation_result(params: dict[str, Any]) -> dict[str, Any]:
     target_spl = float(params.get("targetSpl", 115.0))
     volume = max(float(params.get("maxVolume", 55.0)), 5.0)
@@ -180,7 +149,7 @@ def _build_optimisation_result(params: dict[str, Any]) -> dict[str, Any]:
     if alignment == "vented":
         vented_solver = VentedBoxSolver(
             DEFAULT_DRIVER,
-            _vented_design(volume),
+            recommended_vented_alignment(volume),
             drive_voltage=drive_voltage,
         )
         vented_response = vented_solver.frequency_response(_frequency_axis(), 1.0)

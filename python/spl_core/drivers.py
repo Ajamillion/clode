@@ -235,3 +235,45 @@ class VentedBoxDesign:
             return None
         omega0 = 2 * pi * self.port.tuning_frequency(cab_acoustic)
         return self.leakage_q / (omega0 * cab_acoustic)
+
+
+DEFAULT_DRIVER = DriverParameters(
+    fs_hz=32.0,
+    qts=0.39,
+    re_ohm=3.2,
+    bl_t_m=15.5,
+    mms_kg=0.125,
+    sd_m2=0.052,
+    vas_l=75.0,
+    le_h=0.0007,
+    xmax_mm=12.0,
+)
+
+
+def recommended_vented_alignment(volume_l: float) -> VentedBoxDesign:
+    """Return a balanced vented alignment for the supplied net volume.
+
+    The heuristic mirrors the defaults used by the gateway and Studio mock server so
+    scripts and services share consistent starting points when a dedicated design has
+    not been provided. The helper scales port diameter and length with volume while
+    clamping to a practical range to avoid unrealistic geometries.
+    """
+
+    volume = max(float(volume_l), 10.0)
+    diameter = max(0.06, min(0.15, 0.0018 * volume + 0.065))
+    port_area = pi * (diameter / 2) ** 2
+    count = 2 if volume >= 85.0 else 1
+    if count > 1:
+        diameter = (port_area / count / pi) ** 0.5 * 2
+    length = max(0.16, min(0.48, 0.0032 * volume + 0.18))
+    return VentedBoxDesign(
+        volume_l=volume,
+        port=PortGeometry(
+            diameter_m=diameter,
+            length_m=length,
+            count=count,
+            flare_factor=1.6,
+            loss_q=18.0,
+        ),
+        leakage_q=9.5,
+    )

@@ -59,6 +59,7 @@ pnpm typecheck   # tsconfig builds + mypy over python/services
 pnpm py:test     # Python unit tests
 pnpm py:tolerance # writes JSON reports into ./tolerance-snapshots
 pnpm py:schemas  # writes solver request/response schemas into ./schema-exports
+pnpm py:compare -- path/to/measurement.dat --alignment sealed
 ```
 
 The tolerance helper accepts additional options (`--iterations`, `--seed`, `--vented-iterations`, etc.). Pass them after `--` when using the pnpm script, for example `pnpm py:tolerance -- --iterations 256`.
@@ -94,3 +95,14 @@ python -m unittest discover -s python/tests
 - Generate local JSON files for tooling by running `pnpm py:schemas`, which writes `catalog.json` plus per-solver request/response documents to `./schema-exports`.
 
 Contributions and feedback are welcome as we grow Bagger-SPL toward an offline-first yet cloud-capable toolchain.
+
+## Measurement comparison CLI
+
+Use the new `compare_measurements.py` script to benchmark field measurements against the analytical solvers without spinning up the FastAPI gateway. Measurements exported from Klippel (`.dat`) and REW (`.mdat`) are detected automatically:
+
+```bash
+pnpm py:compare -- path/to/measurement.mdat --alignment vented --volume 62 --drive-voltage 2.83 \
+  --stats-output ./stats.json --delta-output ./delta.json
+```
+
+The command prints a human-readable summary by default; pass `--json` for machine-readable output. Optional flags mirror the gateway defaults so Studio results and CLI analyses stay aligned.
