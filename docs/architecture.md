@@ -38,7 +38,7 @@
 - **Modules**:
   - `drivers`: TS parameter ingestion, validation, interpolation (kNN + GP-lite) plus suspension compliance curve synthesis and excursion utilities.
   - `mechanics`: Suspension/BL curve estimators with physics-informed regularization (progressively migrating out of `drivers`).
-  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics) plus the new hybrid pressure-field prototype that previews FEM/BEM outputs (interior pressure slices, hotspot coordinate mapping, port compression heuristics, Mach tracking, configurable snapshot stride) without heavy numerical dependencies.
+  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics) plus the new hybrid pressure-field prototype that previews FEM/BEM outputs (interior pressure slices, hotspot coordinate mapping, port compression heuristics, Mach tracking, configurable snapshot stride, suspension creep modelling) without heavy numerical dependencies.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis (initial sealed/vented sweep landed) and reciprocity/thermal sanity checks.
   - `measurements`: Klippel/REW ingestion, trace alignment, heuristic diagnosis (level trims, leakage hints, port retunes), and measurement-vs-simulation delta statistics exposed through both the FastAPI endpoints and a standalone CLI.
@@ -50,7 +50,7 @@
 - FastAPI app that:
   - Exposes REST endpoints for job submission, driver queries, schema catalogs, and aggregation (`/opt/runs`, `/opt/stats`, `/schemas/solvers`).
   - Returns alignment summaries (Fc/Qtc, Fb, -3 dB edges, velocity peaks) alongside solver traces.
-  - Streams hybrid solver responses via `/simulate/hybrid`, returning multi-plane pressure slices with per-plane maxima/means and hotspot coordinates for Studio overlays, and allows callers to throttle snapshot density via the `snapshot_stride` request field.
+  - Streams hybrid solver responses via `/simulate/hybrid`, returning multi-plane pressure slices with per-plane maxima/means and hotspot coordinates for Studio overlays, and allows callers to throttle snapshot density via the `snapshot_stride` request field or disable the suspension creep model per run.
   - Offers Monte Carlo tolerance endpoints to summarise manufacturing risk (excursion, port velocity) with qualitative risk ratings directly from the gateway.
   - Provides measurement preview + comparison endpoints that parse Klippel `.dat` / REW `.mdat` uploads and report SPL/impedance deltas against solver predictions, returning both heuristic diagnoses and calibration posteriors with optional frequency-band gating for targeted fits.
   - Hosts WebSocket streams for live optimization telemetry (iterations, constraint hits, topology swaps).

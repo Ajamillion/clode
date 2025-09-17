@@ -216,6 +216,10 @@ def hybrid_simulation_request_schema() -> dict[str, Any]:
                 "type": "boolean",
                 "description": "Include full pressure rasters in the response payload.",
             },
+            "suspension_creep": {
+                "type": "boolean",
+                "description": "Enable the suspension creep model when computing the response.",
+            },
         },
     }
 

@@ -135,6 +135,8 @@ class HybridSolverSummary:
     plane_max_pressure_pa: dict[str, float]
     plane_mean_pressure_pa: dict[str, float]
     plane_max_pressure_location_m: dict[str, tuple[float, float, float]]
+    suspension_creep_ratio: float | None = None
+    suspension_creep_time_constants_s: tuple[float, ...] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -154,6 +156,12 @@ class HybridSolverSummary:
                 label: list(coords)
                 for label, coords in self.plane_max_pressure_location_m.items()
             },
+            "suspension_creep_ratio": self.suspension_creep_ratio,
+            "suspension_creep_time_constants_s": (
+                list(self.suspension_creep_time_constants_s)
+                if self.suspension_creep_time_constants_s is not None
+                else None
+            ),
         }
 
 
@@ -195,6 +203,7 @@ class HybridBoxSolver:
         *,
         drive_voltage: float = 2.83,
         grid_resolution: int = 24,
+        suspension_creep: bool = True,
     ) -> None:
         if drive_voltage <= 0:
             raise ValueError("Drive voltage must be positive")
@@ -223,6 +232,17 @@ class HybridBoxSolver:
         self._cms = driver.compliance()
         self._rms = driver.mechanical_resistance()
 
+        self._creep_terms: list[tuple[float, float]] = []
+        if suspension_creep:
+            tau_scale = max(1.0, 60.0 / max(driver.fs_hz, 1.0))
+            self._creep_terms = [
+                (0.45, 5.0 * tau_scale),
+                (0.25, 25.0 * tau_scale),
+                (0.15, 120.0 * tau_scale),
+            ]
+        self._creep_gain = 1.0 + sum(weight for weight, _ in self._creep_terms)
+        self._creep_time_constants = tuple(tau for _, tau in self._creep_terms)
+
         self._port: PortGeometry | None = None
         self._cab_acoustic: float | None = None
         self._map: float | None = None
@@ -230,7 +250,6 @@ class HybridBoxSolver:
         self._rleak: float | None = None
         self._port_position: tuple[float, float, float] | None = None
         self._cab_mech: float | None = None
-        self._cms_total: float | None = None
         self._boundary_loss = 1.5
 
         if isinstance(enclosure, VentedBoxDesign):
@@ -246,12 +265,10 @@ class HybridBoxSolver:
                 0.2 * self._side_length,
                 0.08 * self._side_length,
             )
-            self._cms_total = None
         else:
             self._mode = "sealed"
             self._port = None
             self._cab_mech = enclosure.air_compliance(driver)
-            self._cms_total = 1.0 / (1.0 / self._cms + 1.0 / self._cab_mech)
             self._boundary_loss = 1.6
             self._port_position = None
             self._cab_acoustic = None
@@ -406,6 +423,10 @@ class HybridBoxSolver:
             plane_max_pressure_pa=plane_maxima,
             plane_mean_pressure_pa=plane_means,
             plane_max_pressure_location_m=plane_locations,
+            suspension_creep_ratio=self._creep_gain if self._creep_terms else None,
+            suspension_creep_time_constants_s=(
+                self._creep_time_constants if self._creep_terms else None
+            ),
         )
 
         result = HybridSolverResult(
@@ -419,10 +440,26 @@ class HybridBoxSolver:
         )
         return result, summary
 
+    def _suspension_compliance(self, omega: float) -> complex:
+        compliance = complex(self._cms, 0.0)
+        if not self._creep_terms:
+            return compliance
+        multiplier: complex = 1.0 + 0.0j
+        for weight, tau in self._creep_terms:
+            multiplier += weight / (1.0 + 1j * omega * tau)
+        return compliance * multiplier
+
     def _sealed_state(self, omega: float) -> tuple[complex, complex, complex]:
-        assert self._cms_total is not None
         driver = self.driver
-        zm = self._rms + 1j * (omega * driver.mms_kg - 1.0 / (omega * self._cms_total))
+        cms_eff = self._suspension_compliance(omega)
+        cab = complex(self._cab_mech, 0.0) if self._cab_mech is not None else None
+        if cab is not None:
+            cms_total = 1.0 / (1.0 / cms_eff + 1.0 / cab)
+        else:
+            cms_total = cms_eff
+        spring_impedance = 1.0 / (1j * omega * cms_total)
+        mass_impedance = 1j * omega * driver.mms_kg
+        zm = self._rms + mass_impedance + spring_impedance
         ze = driver.re_ohm + 1j * omega * driver.le_h + (driver.bl_t_m**2) / zm
         current = self.drive_voltage / ze
         force = driver.bl_t_m * current
@@ -447,7 +484,8 @@ class HybridBoxSolver:
         z_port = self._rap + 1j * omega * self._map
         z_load = 1.0 / (1.0 / z_cab + 1.0 / z_port)
 
-        z_mech = self._rms + 1j * omega * driver.mms_kg + 1.0 / (1j * omega * self._cms)
+        cms_eff = self._suspension_compliance(omega)
+        z_mech = self._rms + 1j * omega * driver.mms_kg + 1.0 / (1j * omega * cms_eff)
         z_total_mech = z_mech + driver.sd_m2**2 * z_load
 
         ze = driver.re_ohm + 1j * omega * driver.le_h + (driver.bl_t_m**2) / z_total_mech

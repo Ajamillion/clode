@@ -82,6 +82,8 @@ class SchemaExportTests(unittest.TestCase):
         self.assertIn("snapshot_stride", schema["properties"])
         stride_schema = schema["properties"]["snapshot_stride"]
         self.assertEqual(stride_schema["minimum"], 1)
+        self.assertIn("suspension_creep", schema["properties"])
+        self.assertEqual(schema["properties"]["suspension_creep"]["type"], "boolean")
 
     def test_hybrid_response_schema_exposes_plane_metrics(self) -> None:
         schema = hybrid_simulation_response_schema()
@@ -100,6 +102,11 @@ class SchemaExportTests(unittest.TestCase):
         self.assertEqual(summary["type"], "object")
         self.assertIn("max_pressure_location_m", summary["properties"])
         self.assertIn("plane_max_pressure_location_m", summary["properties"])
+        self.assertIn("suspension_creep_ratio", summary["properties"])
+        creep_time = summary["properties"]["suspension_creep_time_constants_s"]
+        self.assertIn("anyOf", creep_time)
+        array_opts = [opt for opt in creep_time["anyOf"] if opt.get("type") == "array"]
+        self.assertTrue(array_opts)
         self.assertIn("snapshot_stride", schema["required"])
 
     def test_solver_catalog_lists_both_solvers(self) -> None:

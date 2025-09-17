@@ -31,6 +31,8 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   minimum port compression ratios for targeted damping and vent tuning analysis
 - ✅ Configurable hybrid snapshot stride so lighter clients can down-sample interior
   field rasters without losing summary metrics
+- ✅ Hybrid suspension creep model with API toggle and summary telemetry describing
+  the low-frequency compliance gain and time constants
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites

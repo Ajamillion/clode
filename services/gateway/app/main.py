@@ -143,6 +143,7 @@ def _hybrid_solver_from_request(payload: HybridRequest) -> tuple[str, HybridBoxS
             box,
             drive_voltage=payload.drive_voltage,
             grid_resolution=int(payload.grid_resolution),
+            suspension_creep=payload.suspension_creep,
         )
     except ValueError as exc:  # pragma: no cover - validation surface
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -336,6 +337,7 @@ class HybridRequest(BaseModel):
     grid_resolution: int = Field(24, ge=8, le=96)
     snapshot_stride: int = Field(1, ge=1)
     include_snapshots: bool = Field(True)
+    suspension_creep: bool = Field(True)
 
     def resolve_alignment(self) -> str:
         if self.alignment is None:
@@ -656,6 +658,7 @@ if FastAPI is not None:  # pragma: no branch
                 "grid_resolution": solver.grid_resolution,
                 "snapshot_stride": result.snapshot_stride,
                 "snapshot_count": len(result.field_snapshots),
+                "suspension_creep": payload.suspension_creep,
                 "plane_metrics": {
                     label: {
                         "max_pressure_pa": summary.plane_max_pressure_pa[label],

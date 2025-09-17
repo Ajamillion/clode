@@ -160,3 +160,32 @@ def test_hybrid_snapshot_serialisation_includes_plane_metadata() -> None:
     assert summary.plane_max_pressure_pa[snapshot_payload["plane_label"]] >= snapshot_payload[
         "max_pressure_pa"
     ]
+
+
+def test_hybrid_solver_reports_suspension_creep_metadata() -> None:
+    driver = _demo_driver()
+    box = BoxDesign(volume_l=48.0, leakage_q=12.0)
+    solver_creep = HybridBoxSolver(driver, box, drive_voltage=2.83, grid_resolution=14)
+    solver_rigid = HybridBoxSolver(
+        driver,
+        box,
+        drive_voltage=2.83,
+        grid_resolution=14,
+        suspension_creep=False,
+    )
+
+    frequencies = [12.0]
+    result_creep, summary_creep = solver_creep.frequency_response(frequencies)
+    result_rigid, summary_rigid = solver_rigid.frequency_response(frequencies)
+
+    assert result_creep.cone_velocity_ms[0] > result_rigid.cone_velocity_ms[0]
+    assert summary_creep.suspension_creep_ratio is not None
+    assert summary_creep.suspension_creep_ratio > 1.0
+    assert summary_creep.suspension_creep_time_constants_s is not None
+    assert len(summary_creep.suspension_creep_time_constants_s) >= 1
+    assert summary_rigid.suspension_creep_ratio is None
+
+    summary_payload = summary_creep.to_dict()
+    assert "suspension_creep_ratio" in summary_payload
+    assert summary_payload["suspension_creep_ratio"] == summary_creep.suspension_creep_ratio
+    assert summary_payload["suspension_creep_time_constants_s"]
