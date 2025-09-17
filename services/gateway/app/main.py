@@ -44,6 +44,8 @@ from spl_core import (
     ToleranceSpec,
     VentedBoxDesign,
     VentedBoxSolver,
+    apply_calibration_overrides_to_box,
+    apply_calibration_overrides_to_drive_voltage,
     compare_measurement_to_prediction,
     derive_calibration_overrides,
     derive_calibration_update,
@@ -174,6 +176,170 @@ def _band_from_trace(trace: MeasurementTrace) -> dict[str, float]:
     minimum = min(trace.frequency_hz)
     maximum = max(trace.frequency_hz)
     return {"min_hz": float(minimum), "max_hz": float(maximum)}
+
+
+def _sealed_measurement_payload(
+    driver: DriverParameters,
+    box: BoxDesign,
+    measurement: MeasurementTrace,
+    mic_distance_m: float,
+    drive_voltage: float,
+    apply_overrides: bool,
+) -> dict[str, Any]:
+    solver = SealedBoxSolver(driver, box, drive_voltage=drive_voltage)
+    response = solver.frequency_response(measurement.frequency_hz, mic_distance_m)
+    summary = solver.alignment_summary(response)
+    predicted = measurement_from_response(response)
+    delta, stats, diagnosis = compare_measurement_to_prediction(measurement, predicted)
+    calibration = derive_calibration_update(diagnosis)
+    overrides = derive_calibration_overrides(
+        calibration,
+        drive_voltage_v=drive_voltage,
+        leakage_q=box.leakage_q,
+    )
+
+    payload: dict[str, Any] = {
+        "summary": summary.to_dict(),
+        "prediction": predicted.to_dict(),
+        "delta": delta.to_dict(),
+        "stats": stats.to_dict(),
+        "diagnosis": diagnosis.to_dict(),
+        "calibration": calibration.to_dict(),
+        "calibration_overrides": overrides.to_dict(),
+        "frequency_band": _band_from_trace(measurement),
+    }
+
+    if apply_overrides:
+        calibrated_box = apply_calibration_overrides_to_box(box, overrides)
+        calibrated_drive = apply_calibration_overrides_to_drive_voltage(drive_voltage, overrides)
+        sealed_solver = SealedBoxSolver(driver, calibrated_box, drive_voltage=calibrated_drive)
+        calibrated_response = sealed_solver.frequency_response(
+            measurement.frequency_hz,
+            mic_distance_m,
+        )
+        calibrated_summary = sealed_solver.alignment_summary(calibrated_response)
+        calibrated_prediction = measurement_from_response(calibrated_response)
+        calibrated_delta, calibrated_stats, calibrated_diagnosis = compare_measurement_to_prediction(
+            measurement,
+            calibrated_prediction,
+        )
+        payload["calibrated"] = {
+            "inputs": {
+                "drive_voltage_v": float(calibrated_drive),
+                "leakage_q": float(calibrated_box.leakage_q)
+                if calibrated_box.leakage_q is not None
+                else None,
+                "port_length_m": None,
+            },
+            "summary": calibrated_summary.to_dict(),
+            "prediction": calibrated_prediction.to_dict(),
+            "delta": calibrated_delta.to_dict(),
+            "stats": calibrated_stats.to_dict(),
+            "diagnosis": calibrated_diagnosis.to_dict(),
+        }
+
+    return payload
+
+
+def _vented_measurement_payload(
+    driver: DriverParameters,
+    box: VentedBoxDesign,
+    measurement: MeasurementTrace,
+    mic_distance_m: float,
+    drive_voltage: float,
+    apply_overrides: bool,
+) -> dict[str, Any]:
+    solver = VentedBoxSolver(driver, box, drive_voltage=drive_voltage)
+    response = solver.frequency_response(measurement.frequency_hz, mic_distance_m)
+    summary = solver.alignment_summary(response)
+    predicted = measurement_from_response(response)
+    delta, stats, diagnosis = compare_measurement_to_prediction(
+        measurement,
+        predicted,
+        port_length_m=box.port.length_m,
+    )
+    calibration = derive_calibration_update(diagnosis)
+    overrides = derive_calibration_overrides(
+        calibration,
+        drive_voltage_v=drive_voltage,
+        port_length_m=box.port.length_m,
+        leakage_q=box.leakage_q,
+    )
+
+    payload: dict[str, Any] = {
+        "summary": summary.to_dict(),
+        "prediction": predicted.to_dict(),
+        "delta": delta.to_dict(),
+        "stats": stats.to_dict(),
+        "diagnosis": diagnosis.to_dict(),
+        "calibration": calibration.to_dict(),
+        "calibration_overrides": overrides.to_dict(),
+        "frequency_band": _band_from_trace(measurement),
+    }
+
+    if apply_overrides:
+        calibrated_box = apply_calibration_overrides_to_box(box, overrides)
+        calibrated_drive = apply_calibration_overrides_to_drive_voltage(drive_voltage, overrides)
+        vented_solver = VentedBoxSolver(driver, calibrated_box, drive_voltage=calibrated_drive)
+        calibrated_response = vented_solver.frequency_response(
+            measurement.frequency_hz,
+            mic_distance_m,
+        )
+        calibrated_summary = vented_solver.alignment_summary(calibrated_response)
+        calibrated_prediction = measurement_from_response(calibrated_response)
+        calibrated_delta, calibrated_stats, calibrated_diagnosis = compare_measurement_to_prediction(
+            measurement,
+            calibrated_prediction,
+            port_length_m=calibrated_box.port.length_m,
+        )
+        payload["calibrated"] = {
+            "inputs": {
+                "drive_voltage_v": float(calibrated_drive),
+                "leakage_q": float(calibrated_box.leakage_q),
+                "port_length_m": float(calibrated_box.port.length_m),
+            },
+            "summary": calibrated_summary.to_dict(),
+            "prediction": calibrated_prediction.to_dict(),
+            "delta": calibrated_delta.to_dict(),
+            "stats": calibrated_stats.to_dict(),
+            "diagnosis": calibrated_diagnosis.to_dict(),
+        }
+
+    return payload
+
+
+def _measurement_comparison_payload(
+    *,
+    alignment: Literal["sealed", "vented"],
+    driver: DriverParameters,
+    box: BoxDesign | VentedBoxDesign,
+    measurement: MeasurementTrace,
+    mic_distance_m: float,
+    drive_voltage: float,
+    apply_overrides: bool,
+) -> dict[str, Any]:
+    if alignment == "vented":
+        if not isinstance(box, VentedBoxDesign):  # pragma: no cover - defensive
+            raise ValueError("Vented comparisons require a vented box design")
+        return _vented_measurement_payload(
+            driver,
+            box,
+            measurement,
+            mic_distance_m,
+            drive_voltage,
+            apply_overrides,
+        )
+
+    if not isinstance(box, BoxDesign):  # pragma: no cover - defensive
+        raise ValueError("Sealed comparisons require a sealed box design")
+    return _sealed_measurement_payload(
+        driver,
+        box,
+        measurement,
+        mic_distance_m,
+        drive_voltage,
+        apply_overrides,
+    )
 
 
 def _resolve_alignment(params: dict[str, Any]) -> str:
@@ -397,6 +563,7 @@ class SealedMeasurementRequest(BaseModel):
     mic_distance_m: float = Field(1.0, gt=0)
     min_frequency_hz: float | None = Field(None, gt=0)
     max_frequency_hz: float | None = Field(None, gt=0)
+    apply_overrides: bool = False
 
 
 class VentedMeasurementRequest(BaseModel):
@@ -407,6 +574,7 @@ class VentedMeasurementRequest(BaseModel):
     mic_distance_m: float = Field(1.0, gt=0)
     min_frequency_hz: float | None = Field(None, gt=0)
     max_frequency_hz: float | None = Field(None, gt=0)
+    apply_overrides: bool = False
 
 
 class OptimizationParams(BaseModel):
@@ -524,34 +692,17 @@ if FastAPI is not None:  # pragma: no branch
         measurement = _band_limited_measurement(
             measurement, payload.min_frequency_hz, payload.max_frequency_hz
         )
-        solver = SealedBoxSolver(
-            payload.driver.to_driver(),
-            payload.box.to_box(),
+        driver = payload.driver.to_driver()
+        box = payload.box.to_box()
+        return _measurement_comparison_payload(
+            alignment="sealed",
+            driver=driver,
+            box=box,
+            measurement=measurement,
+            mic_distance_m=payload.mic_distance_m,
             drive_voltage=payload.drive_voltage,
+            apply_overrides=payload.apply_overrides,
         )
-        response = solver.frequency_response(measurement.frequency_hz, payload.mic_distance_m)
-        summary = solver.alignment_summary(response)
-        predicted = measurement_from_response(response)
-        delta, stats, diagnosis = compare_measurement_to_prediction(
-            measurement,
-            predicted,
-        )
-        calibration = derive_calibration_update(diagnosis)
-        overrides = derive_calibration_overrides(
-            calibration,
-            drive_voltage_v=payload.drive_voltage,
-            leakage_q=payload.box.leakage_q,
-        )
-        return {
-            "summary": summary.to_dict(),
-            "prediction": predicted.to_dict(),
-            "delta": delta.to_dict(),
-            "stats": stats.to_dict(),
-            "diagnosis": diagnosis.to_dict(),
-            "calibration": calibration.to_dict(),
-            "calibration_overrides": overrides.to_dict(),
-            "frequency_band": _band_from_trace(measurement),
-        }
 
     @app.post("/measurements/vented/compare")
     async def compare_vented_measurement(payload: VentedMeasurementRequest) -> dict[str, Any]:
@@ -559,36 +710,17 @@ if FastAPI is not None:  # pragma: no branch
         measurement = _band_limited_measurement(
             measurement, payload.min_frequency_hz, payload.max_frequency_hz
         )
-        solver = VentedBoxSolver(
-            payload.driver.to_driver(),
-            payload.box.to_box(),
+        driver = payload.driver.to_driver()
+        box = payload.box.to_box()
+        return _measurement_comparison_payload(
+            alignment="vented",
+            driver=driver,
+            box=box,
+            measurement=measurement,
+            mic_distance_m=payload.mic_distance_m,
             drive_voltage=payload.drive_voltage,
+            apply_overrides=payload.apply_overrides,
         )
-        response = solver.frequency_response(measurement.frequency_hz, payload.mic_distance_m)
-        summary = solver.alignment_summary(response)
-        predicted = measurement_from_response(response)
-        delta, stats, diagnosis = compare_measurement_to_prediction(
-            measurement,
-            predicted,
-            port_length_m=payload.box.port.length_m,
-        )
-        calibration = derive_calibration_update(diagnosis)
-        overrides = derive_calibration_overrides(
-            calibration,
-            drive_voltage_v=payload.drive_voltage,
-            port_length_m=payload.box.port.length_m,
-            leakage_q=payload.box.leakage_q,
-        )
-        return {
-            "summary": summary.to_dict(),
-            "prediction": predicted.to_dict(),
-            "delta": delta.to_dict(),
-            "stats": stats.to_dict(),
-            "diagnosis": diagnosis.to_dict(),
-            "calibration": calibration.to_dict(),
-            "calibration_overrides": overrides.to_dict(),
-            "frequency_band": _band_from_trace(measurement),
-        }
 
     @app.post("/simulate/sealed")
     async def simulate_sealed(payload: SealedRequest) -> dict[str, Any]:

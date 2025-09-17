@@ -258,21 +258,57 @@ export function MeasurementPanel() {
       const driveScale = overrides.drive_voltage_scale ?? null
       if (driveScale != null || overrides.drive_voltage_v != null) {
         entries.push({
-          label: 'Calibrated drive',
+          label: 'Recommended drive',
           value: `${formatVoltage(overrides.drive_voltage_v ?? null)} (${formatScalePercent(driveScale)}, ${formatScaleDb(driveScale)})`,
         })
       }
       if (overrides.port_length_m != null || overrides.port_length_scale != null) {
         entries.push({
-          label: 'Calibrated port length',
+          label: 'Recommended port length',
           value: `${formatLength(overrides.port_length_m ?? null)} (${formatScalePercent(overrides.port_length_scale ?? null)})`,
         })
       }
       if (overrides.leakage_q != null || overrides.leakage_q_scale != null) {
         entries.push({
-          label: 'Calibrated leakage Q',
+          label: 'Recommended leakage Q',
           value: `${formatScalar(overrides.leakage_q ?? null, 2)} (${formatScalePercent(overrides.leakage_q_scale ?? null)})`,
         })
+      }
+    }
+    const calibrated = comparison?.calibrated
+    if (calibrated) {
+      const inputs = calibrated.inputs
+      if (inputs) {
+        if (inputs.drive_voltage_v != null) {
+          entries.push({ label: 'Rerun drive', value: formatVoltage(inputs.drive_voltage_v) })
+        }
+        if (inputs.port_length_m != null) {
+          entries.push({ label: 'Rerun port length', value: formatLength(inputs.port_length_m) })
+        }
+        if (inputs.leakage_q != null) {
+          entries.push({ label: 'Rerun leakage Q', value: formatScalar(inputs.leakage_q, 2) })
+        }
+      }
+      const calStats = calibrated.stats
+      if (calStats) {
+        if (calStats.spl_rmse_db != null) {
+          entries.push({ label: 'Rerun SPL RMSE', value: formatDecibel(calStats.spl_rmse_db) })
+        }
+        if (calStats.spl_bias_db != null) {
+          entries.push({ label: 'Rerun SPL bias', value: formatDecibel(calStats.spl_bias_db) })
+        }
+        if (calStats.max_spl_delta_db != null) {
+          entries.push({ label: 'Rerun worst delta', value: formatDecibel(calStats.max_spl_delta_db) })
+        }
+      }
+      const calSummary = calibrated.summary
+      if (calSummary) {
+        if (calSummary.safe_drive_voltage_v != null) {
+          entries.push({ label: 'Rerun safe drive', value: formatVoltage(calSummary.safe_drive_voltage_v) })
+        }
+        if (calSummary.fb_hz != null) {
+          entries.push({ label: 'Rerun Fb', value: formatFrequency(calSummary.fb_hz) })
+        }
       }
     }
     return entries
@@ -290,10 +326,16 @@ export function MeasurementPanel() {
     return notes.map((note) => String(note)).filter((note) => note.length > 0)
   }, [comparison])
 
+  const calibratedNotes = useMemo(() => {
+    const notes = comparison?.calibrated?.diagnosis?.notes
+    if (!notes) return []
+    return notes.map((note) => String(note)).filter((note) => note.length > 0)
+  }, [comparison])
+
   const insightNotes = useMemo(() => {
-    if (!diagnosisNotes.length && !calibrationNotes.length) return []
-    return [...diagnosisNotes, ...calibrationNotes]
-  }, [diagnosisNotes, calibrationNotes])
+    if (!diagnosisNotes.length && !calibrationNotes.length && !calibratedNotes.length) return []
+    return [...diagnosisNotes, ...calibrationNotes, ...calibratedNotes]
+  }, [diagnosisNotes, calibrationNotes, calibratedNotes])
 
   const canCompare = !!preview && run?.status === 'succeeded'
 

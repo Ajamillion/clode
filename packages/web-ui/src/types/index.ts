@@ -165,6 +165,21 @@ export type MeasurementCalibrationOverrides = {
   leakage_q?: number | null
 }
 
+export type MeasurementCalibratedInputs = {
+  drive_voltage_v?: number | null
+  leakage_q?: number | null
+  port_length_m?: number | null
+}
+
+export type MeasurementCalibratedResult = {
+  inputs?: MeasurementCalibratedInputs | null
+  summary?: Record<string, number | null>
+  prediction?: MeasurementTrace | null
+  delta?: MeasurementDelta | null
+  stats?: MeasurementStats | null
+  diagnosis?: MeasurementDiagnosis | null
+}
+
 export type MeasurementComparison = {
   summary?: Record<string, number | null>
   prediction?: MeasurementTrace | null
@@ -174,4 +189,5 @@ export type MeasurementComparison = {
   calibration?: MeasurementCalibration | null
   calibration_overrides?: MeasurementCalibrationOverrides | null
   frequency_band?: MeasurementFrequencyBand | null
+  calibrated?: MeasurementCalibratedResult | null
 }

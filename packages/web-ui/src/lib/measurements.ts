@@ -3,6 +3,8 @@ import type {
   MeasurementCalibration,
   MeasurementCalibrationParameter,
   MeasurementCalibrationOverrides,
+  MeasurementCalibratedResult,
+  MeasurementCalibratedInputs,
   MeasurementDelta,
   MeasurementDiagnosis,
   MeasurementFrequencyBand,
@@ -29,6 +31,7 @@ type ComparisonPayload = {
   diagnosis?: MeasurementDiagnosis | null
   calibration?: MeasurementCalibration | null
   calibration_overrides?: MeasurementCalibrationOverrides | null
+  calibrated?: MeasurementCalibratedResult | null
 }
 
 function asNumberArray(value: unknown): number[] | null {
@@ -203,6 +206,48 @@ export function normaliseMeasurementDiagnosis(raw: unknown): MeasurementDiagnosi
     diagnosis.notes = notes
   }
   return Object.keys(diagnosis).length ? diagnosis : null
+}
+
+function normaliseCalibratedInputs(raw: unknown): MeasurementCalibratedInputs | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const read = (key: string) => {
+    const value = obj[key]
+    if (value == null) return null
+    const num = Number(value)
+    return Number.isFinite(num) ? num : null
+  }
+  const inputs: MeasurementCalibratedInputs = {
+    drive_voltage_v: read('drive_voltage_v'),
+    leakage_q: read('leakage_q'),
+    port_length_m: read('port_length_m'),
+  }
+  if (inputs.drive_voltage_v == null && inputs.leakage_q == null && inputs.port_length_m == null) {
+    return null
+  }
+  return inputs
+}
+
+function normaliseCalibratedResult(raw: unknown): MeasurementCalibratedResult | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const result: MeasurementCalibratedResult = {
+    inputs: normaliseCalibratedInputs(obj.inputs),
+    summary: normaliseNumberRecord(obj.summary),
+    prediction: normaliseMeasurementTrace(obj.prediction),
+    delta: normaliseMeasurementDelta(obj.delta),
+    stats: normaliseMeasurementStats(obj.stats),
+    diagnosis: normaliseMeasurementDiagnosis(obj.diagnosis),
+  }
+  const hasData = Boolean(
+    result.inputs ||
+      result.summary ||
+      result.prediction ||
+      result.delta ||
+      result.stats ||
+      result.diagnosis,
+  )
+  return hasData ? result : null
 }
 
 function normaliseCalibrationParameter(raw: unknown): MeasurementCalibrationParameter | null {
@@ -388,6 +433,7 @@ export function buildMeasurementRequest(
       body: {
         ...baseBody,
         box: ventedPortDesign(volume),
+        apply_overrides: true,
       },
     }
   }
@@ -399,6 +445,7 @@ export function buildMeasurementRequest(
         volume_l: Math.max(volume, 5),
         leakage_q: 15,
       },
+      apply_overrides: true,
     },
   }
 }
@@ -425,5 +472,6 @@ export async function fetchMeasurementComparison(
   comparison.calibration = normaliseMeasurementCalibration(data?.calibration) ?? null
   comparison.calibration_overrides = normaliseMeasurementOverrides(data?.calibration_overrides) ?? null
   comparison.frequency_band = normaliseFrequencyBand(data?.frequency_band) ?? null
+  comparison.calibrated = normaliseCalibratedResult(data?.calibrated) ?? null
   return comparison
 }
