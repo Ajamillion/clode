@@ -41,7 +41,7 @@
   - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics) plus the new hybrid pressure-field prototype that previews FEM/BEM outputs (interior pressure slices, hotspot coordinate mapping, port compression heuristics, Mach tracking, configurable snapshot stride, suspension creep modelling, lightweight thermal network for coil/pole/basket heating and thermal compression telemetry) without heavy numerical dependencies.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis (initial sealed/vented sweep landed) and reciprocity/thermal sanity checks.
-  - `measurements`: Klippel/REW ingestion, trace alignment, heuristic diagnosis (level trims, leakage hints, port retunes), and measurement-vs-simulation delta statistics exposed through both the FastAPI endpoints and a standalone CLI.
+  - `measurements`: Klippel/REW ingestion, trace alignment, heuristic diagnosis (level trims, leakage hints, port retunes), and measurement-vs-simulation delta statistics exposed through both the FastAPI endpoints and a standalone CLI, now powering multi-metric overlays (SPL, phase, impedance magnitude, THD) with solver delta toggles inside Studio.
   - `calibration`: Bayesian updates that transform measurement diagnoses into posterior level trims, port-length scales, and leakage-Q multipliers with credible intervals for automated solver correction.
   - `serialization`: JSON schema exports for solver requests/responses used by gateway + clients.
 - **API Surface**: Plain Python classes exported through pydantic models; zero global state.

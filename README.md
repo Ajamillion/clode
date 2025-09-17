@@ -24,6 +24,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Calibration overrides that translate Bayesian posteriors into drive, port, and leakage adjustments across CLI, API, and Studio
 - ✅ Measurement comparisons can automatically rerun solver predictions with the derived overrides, returning calibrated stats alongside the baseline fit
 - ✅ Measurement panel overlays measured SPL against solver baselines and calibrated reruns so improvements are visible at a glance
+- ✅ Measurement overlays now span SPL, phase, impedance magnitude, and THD with delta toggles to verify calibration impact at a glance
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
 - ✅ Hybrid solver prototype that blends the lumped models with interior pressure field
   previews, port compression metrics, and Mach tracking
@@ -41,7 +42,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   remain outstanding before the M3 high-fidelity milestone can be called complete
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
-Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈60 %**, overall ≈65 % toward the v1.0 target.
+Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈63 %**, overall ≈66 % toward the v1.0 target.
 
 ## Prerequisites
 - Node.js 20+

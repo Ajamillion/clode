@@ -527,6 +527,58 @@ canvas {
   gap: 0.6rem;
 }
 
+.measurement__chart-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.measurement__chart-tabs,
+.measurement__chart-modes {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.45);
+  box-shadow: inset 0 0 14px rgba(15, 23, 42, 0.4);
+}
+
+.measurement__chart-modes {
+  padding: 0.18rem;
+}
+
+.measurement__chart-toggle {
+  border: none;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.76);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.85rem;
+  border-radius: 999px;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.measurement__chart-toggle:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.16);
+  color: #e2e8f0;
+}
+
+.measurement__chart-toggle.is-active {
+  background: rgba(56, 189, 248, 0.28);
+  color: #f8fafc;
+  box-shadow: 0 10px 20px rgba(14, 116, 144, 0.28);
+}
+
+.measurement__chart-toggle:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 .measurement__chart-head {
   display: flex;
   justify-content: space-between;
@@ -598,6 +650,23 @@ canvas {
   color: #94a3b8;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.measurement__chart-empty {
+  margin: 0.25rem 0 0;
+  padding: 0.85rem;
+  font-size: 0.75rem;
+  text-align: center;
+  color: #cbd5f5;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px dashed rgba(148, 163, 184, 0.22);
+  border-radius: 0.75rem;
+}
+
+.measurement__chart-zero {
+  stroke: rgba(226, 232, 240, 0.4);
+  stroke-width: 0.75;
+  stroke-dasharray: 4 4;
 }
 
 .measurement__highlights div {

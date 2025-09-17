@@ -498,7 +498,7 @@ export function MeasurementPanel() {
               </button>
             </div>
           ) : (
-            <p className="measurement__empty">Run a comparison to surface SPL and impedance deltas against the solver baseline.</p>
+            <p className="measurement__empty">Run a comparison to surface SPL, phase, impedance, and THD overlays alongside the solver deltas.</p>
           )}
         </section>
       </div>
