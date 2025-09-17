@@ -1,15 +1,13 @@
 """Public interface for the Bagger-SPL simulation core."""
 
-from .acoustics.sealed import (
-    SealedAlignmentSummary,
-    SealedBoxResponse,
-    SealedBoxSolver,
+from .acoustics.hybrid import (
+    HybridBoxSolver,
+    HybridFieldSnapshot,
+    HybridSolverResult,
+    HybridSolverSummary,
 )
-from .acoustics.vented import (
-    VentedAlignmentSummary,
-    VentedBoxResponse,
-    VentedBoxSolver,
-)
+from .acoustics.sealed import SealedAlignmentSummary, SealedBoxResponse, SealedBoxSolver
+from .acoustics.vented import VentedAlignmentSummary, VentedBoxResponse, VentedBoxSolver
 from .calibration import (
     DEFAULT_CALIBRATION_PRIOR,
     CalibrationOverrides,
@@ -69,6 +67,10 @@ __all__ = [
     "VentedBoxSolver",
     "VentedBoxResponse",
     "VentedAlignmentSummary",
+    "HybridBoxSolver",
+    "HybridSolverResult",
+    "HybridSolverSummary",
+    "HybridFieldSnapshot",
     "dataclass_schema",
     "sealed_simulation_request_schema",
     "sealed_simulation_response_schema",

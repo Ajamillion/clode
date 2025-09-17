@@ -23,6 +23,8 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Measurement calibration helper that produces Bayesian posteriors for level trims, port scales, and leakage-Q corrections
 - ✅ Calibration overrides that translate Bayesian posteriors into drive, port, and leakage adjustments across CLI, API, and Studio
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
+- ✅ Hybrid solver prototype that blends the lumped models with interior pressure field
+  previews, port compression metrics, and Mach tracking
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites
