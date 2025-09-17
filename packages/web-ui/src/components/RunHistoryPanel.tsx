@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useOptimization } from '@stores/optimization.store'
 import type { OptimizationRun, RunStatus } from '@types/index'
 
@@ -48,17 +48,18 @@ export function RunHistoryPanel() {
   const refreshRuns = useOptimization((state) => state.refreshRuns)
   const status = useOptimization((state) => state.status)
   const activeRunId = useOptimization((state) => state.activeRunId)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedRunId = useOptimization((state) => state.selectedRunId)
+  const selectRun = useOptimization((state) => state.selectRun)
 
   useEffect(() => {
     void refreshRuns()
   }, [refreshRuns])
 
   useEffect(() => {
-    if (!selectedId && activeRunId) {
-      setSelectedId(activeRunId)
+    if (!selectedRunId && activeRunId) {
+      selectRun(activeRunId)
     }
-  }, [activeRunId, selectedId])
+  }, [activeRunId, selectedRunId, selectRun])
 
   useEffect(() => {
     if (status === 'open' || status === 'connecting' || status === 'reconnecting') {
@@ -67,8 +68,9 @@ export function RunHistoryPanel() {
   }, [status, refreshRuns])
 
   const selectedRun = useMemo(
-    () => recentRuns.find((run) => run.id === selectedId) ?? null,
-    [recentRuns, selectedId]
+    () =>
+      recentRuns.find((run) => run.id === selectedRunId) ?? null,
+    [recentRuns, selectedRunId]
   )
 
   const totalRuns = runStats?.total ?? recentRuns.length
@@ -96,13 +98,13 @@ export function RunHistoryPanel() {
         ) : (
           recentRuns.map((run) => {
             const meta = summariseRun(run)
-            const isSelected = run.id === selectedId
+            const isSelected = run.id === selectedRunId
             return (
               <button
                 key={run.id}
                 type="button"
                 className={`run-history__item${isSelected ? ' run-history__item--active' : ''}`}
-                onClick={() => setSelectedId(run.id)}
+                onClick={() => selectRun(run.id)}
               >
                 <div className="run-history__item-top">
                   <span className="run-history__item-id">{truncate(run.id)}</span>

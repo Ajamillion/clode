@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei'
 import { EnclosureRenderer } from '@core/EnclosureRenderer'
 import { OptimizationHUD } from '@components/OptimizationHUD'
 import { RunHistoryPanel } from '@components/RunHistoryPanel'
+import { ResponseSpectraPanel } from '@components/ResponseSpectraPanel'
 import type { MeshData, AcousticNode } from '@types/index'
 
 const demoMesh: MeshData = {
@@ -32,6 +33,7 @@ export default function App() {
       </Suspense>
       <OptimizationHUD />
       <RunHistoryPanel />
+      <ResponseSpectraPanel />
     </div>
   )
 }

@@ -189,10 +189,12 @@ type OptimizationStore = {
   lastRun: OptimizationRun | null
   recentRuns: OptimizationRun[]
   runStats: RunStats | null
+  selectedRunId: string | null
   startOptimization: (params: OptParams) => Promise<void>
   pauseOptimization: () => void
   refreshRuns: () => Promise<void>
   onIterationUpdate: (cb: (d: IterationMetrics) => void) => () => void
+  selectRun: (id: string | null) => void
 }
 
 function toIterationMetrics(data: IterationMessage, fallbackIter: number): IterationMetrics {
@@ -258,6 +260,8 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
             ? { ...state.convergence, ...payload.result.convergence }
             : state.convergence
 
+          const selectedRunId = state.selectedRunId ?? payload.id
+
           return {
             lossHistory,
             gradientHistory,
@@ -267,7 +271,8 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
             gradientNorm,
             lastMessageAt: Math.round(payload.updated_at * 1000),
             convergence,
-            lastRun: payload
+            lastRun: payload,
+            selectedRunId
           }
         })
 
@@ -293,7 +298,8 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
       convergence: null,
       violations: [],
       activeRunId: null,
-      lastRun: null
+      lastRun: null,
+      selectedRunId: null
     })
 
   const fetchRunHistory = async () => {
@@ -307,7 +313,22 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
       const runs = runsRaw
         .map((entry) => normaliseRun(entry))
         .filter((run): run is OptimizationRun => run !== null)
-      set({ recentRuns: runs })
+      set((state) => {
+        let selectedRunId = state.selectedRunId
+        if (selectedRunId) {
+          const exists = runs.some((run) => run.id === selectedRunId)
+          if (!exists) {
+            selectedRunId = runs[0]?.id ?? null
+          }
+        } else if (runs.length) {
+          selectedRunId = runs[0]?.id ?? null
+        }
+
+        return {
+          recentRuns: runs,
+          selectedRunId
+        }
+      })
     } catch (error) {
       if (import.meta.env?.DEV) {
         console.warn('Failed to refresh optimisation runs', error)
@@ -362,11 +383,13 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
     lastRun: null,
     recentRuns: [],
     runStats: null,
+    selectedRunId: null,
     onIterationUpdate: (cb) => {
       iterationListeners.add(cb)
       return () => iterationListeners.delete(cb)
     },
     refreshRuns,
+    selectRun: (id) => set({ selectedRunId: id }),
     startOptimization: async (params: OptParams) => {
       const existing = get().solverWS
       existing?.close()
@@ -415,7 +438,7 @@ export const useOptimization = create<OptimizationStore>((set, get) => {
           const payload = await response.json().catch(() => null)
           const run = normaliseRun(payload)
           if (run) {
-            set({ activeRunId: run.id, lastRun: run })
+            set({ activeRunId: run.id, lastRun: run, selectedRunId: run.id })
             scheduleRunPolling(run.id)
           }
         } else {

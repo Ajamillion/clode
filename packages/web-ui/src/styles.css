@@ -301,6 +301,143 @@ canvas {
   color: #e2e8f0;
 }
 
+.spectra {
+  position: absolute;
+  right: 1.5rem;
+  top: 1.5rem;
+  width: min(26rem, calc(100% - 3rem));
+  padding: 1.15rem 1.25rem 1.25rem;
+  background: rgba(2, 6, 23, 0.74);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.95rem;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 42px rgba(2, 6, 23, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.spectra__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.spectra__title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #cbd5f5;
+}
+
+.spectra__run-id {
+  margin-left: 0.45rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.spectra__tag {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.22);
+  color: #dbeafe;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.spectra__meta {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.spectra__status {
+  color: #38bdf8;
+}
+
+.spectra__charts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.spectra__chart {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  border-radius: 0.85rem;
+  padding: 0.75rem 0.85rem 0.95rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.25);
+}
+
+.spectra__chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #e2e8f0;
+  margin-bottom: 0.45rem;
+}
+
+.spectra__chart-range {
+  color: #94a3b8;
+  font-size: 0.68rem;
+}
+
+.spectra__chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.spectra__axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-top: 0.35rem;
+}
+
+.spectra__axis span:nth-child(2) {
+  color: #a5b4fc;
+}
+
+.spectra__empty {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  padding: 0.6rem 0.2rem;
+}
+
+.spectra__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.6rem;
+}
+
+.spectra__summary-item dt {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.spectra__summary-item dd {
+  margin: 0.2rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
 .hud__actions {
   display: flex;
   gap: 0.5rem;
