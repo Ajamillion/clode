@@ -108,6 +108,7 @@ def test_hybrid_solver_matches_lumped_spl_baseline() -> None:
     assert len(result.field_snapshots) >= len(result.frequency_hz)
     labels = {snap.plane_label for snap in result.field_snapshots}
     assert "mid-plane" in labels
+    assert result.snapshot_stride == 1
 
     # SPL should track the sealed-box lumped model within a small tolerance for low
     # frequencies because the hybrid solver reuses the same underlying impedance
@@ -115,6 +116,26 @@ def test_hybrid_solver_matches_lumped_spl_baseline() -> None:
     spl = result.spl_db
     assert not isclose(spl[0], spl[1], rel_tol=0.25)
     assert spl[2] > spl[0]
+
+
+def test_hybrid_solver_downsamples_snapshots_with_stride() -> None:
+    driver = _demo_driver()
+    box = BoxDesign(volume_l=38.0)
+    solver = HybridBoxSolver(driver, box, drive_voltage=3.0, grid_resolution=14)
+
+    frequencies = [25.0, 35.0, 45.0, 55.0]
+    stride = 2
+    result, _ = solver.frequency_response(frequencies, snapshot_stride=stride)
+
+    assert result.snapshot_stride == stride
+    assert len(result.frequency_hz) == len(frequencies)
+    plane_labels = {snap.plane_label for snap in result.field_snapshots}
+    expected_snapshots = len(plane_labels) * ((len(frequencies) + stride - 1) // stride)
+    assert len(result.field_snapshots) == expected_snapshots
+
+    captured_freqs = {snap.frequency_hz for snap in result.field_snapshots}
+    # Should only capture every other frequency when stride=2
+    assert captured_freqs == {frequencies[i] for i in range(0, len(frequencies), stride)}
 
 
 def test_hybrid_snapshot_serialisation_includes_plane_metadata() -> None:
@@ -126,9 +147,11 @@ def test_hybrid_snapshot_serialisation_includes_plane_metadata() -> None:
 
     payload_without_fields = result.to_dict()
     assert "field_snapshots" not in payload_without_fields
+    assert payload_without_fields["snapshot_stride"] == 1
 
     payload_with_fields = result.to_dict(include_snapshots=True)
     assert "field_snapshots" in payload_with_fields
+    assert payload_with_fields["snapshot_stride"] == 1
     snapshot_payload = payload_with_fields["field_snapshots"][0]
     assert "plane_label" in snapshot_payload
     assert "pressure_rms_pa" in snapshot_payload

@@ -79,6 +79,9 @@ class SchemaExportTests(unittest.TestCase):
         self.assertIn("auto", alignment["enum"])
         port_schema = schema["properties"]["port"]
         self.assertEqual(port_schema["type"], "object")
+        self.assertIn("snapshot_stride", schema["properties"])
+        stride_schema = schema["properties"]["snapshot_stride"]
+        self.assertEqual(stride_schema["minimum"], 1)
 
     def test_hybrid_response_schema_exposes_plane_metrics(self) -> None:
         schema = hybrid_simulation_response_schema()
@@ -97,6 +100,7 @@ class SchemaExportTests(unittest.TestCase):
         self.assertEqual(summary["type"], "object")
         self.assertIn("max_pressure_location_m", summary["properties"])
         self.assertIn("plane_max_pressure_location_m", summary["properties"])
+        self.assertIn("snapshot_stride", schema["required"])
 
     def test_solver_catalog_lists_both_solvers(self) -> None:
         catalog = solver_json_schemas()

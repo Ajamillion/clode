@@ -89,13 +89,13 @@ preserving the long-term vision.
 | **M3 – High-Fidelity Solvers** | Month 6 | FEM/BEM coupling prototype, nonlinear extensions, Monte Carlo tolerance engine, Playwright + pytest integration tests, Docker Compose deployment. |
 | **M4 – Platform Hardening** | Month 9 | Cloud orchestration, offline cache packaging, metamaterial/active modules behind feature flags, observability dashboards, documentation for v1.0 release. |
 
-## Progress Snapshot (Iteration 17)
+## Progress Snapshot (Iteration 18)
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
 - **Milestone M2 – Optimisation Loop:** 100 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, Bayesian calibration helpers, CI automation, and the new schema catalog endpoints/CLI now provide an end-to-end optimisation timeline backed by the gateway.
-- **Milestone M3 – High-Fidelity Solvers:** ≈75 % complete. The hybrid solver now exports multi-plane interior pressure slices with per-plane statistics, records hotspot coordinates, reports minimum port compression ratios, and is surfaced through a dedicated `/simulate/hybrid` gateway endpoint backed by JSON Schemas so typed clients can consume the richer data while the FEM/BEM adaptor matures.
-- **Overall programme:** ≈69 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.75 + 0) ÷ 4 milestones).
-- Latest iteration introduces hotspot coordinate mapping and compression roll-off tracking in the hybrid simulation API alongside schema catalog updates so Studio, the CLI, and downstream services can ingest the enhanced field snapshots without bespoke plumbing—moving the high-fidelity solver track substantially closer to completion.
+- **Milestone M3 – High-Fidelity Solvers:** ≈78 % complete. The hybrid solver now exports multi-plane interior pressure slices with per-plane statistics, records hotspot coordinates, reports minimum port compression ratios, and introduces a configurable snapshot stride so APIs can thin out interior rasters without losing the aggregated summary metrics. The capability is surfaced through a dedicated `/simulate/hybrid` gateway endpoint backed by JSON Schemas so typed clients can consume the richer data while the FEM/BEM adaptor matures.
+- **Overall programme:** ≈70 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.78 + 0) ÷ 4 milestones).
+- Latest iteration layers the snapshot stride control on top of hotspot coordinate mapping and compression roll-off tracking so Studio, the CLI, and downstream services can ingest hybrid telemetry at a tunable density—keeping payloads lightweight while preserving the data required for damping and vent tuning analysis.
 
 ## 4. Completion Strategy
 

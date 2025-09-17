@@ -92,6 +92,7 @@ class HybridSolverResult:
     cone_velocity_ms: list[float]
     port_velocity_ms: list[float]
     field_snapshots: list[HybridFieldSnapshot]
+    snapshot_stride: int = 1
 
     def to_dict(self, *, include_snapshots: bool = False) -> dict[str, Any]:
         """Return a JSON-friendly view of the numeric traces.
@@ -112,6 +113,7 @@ class HybridSolverResult:
             "impedance_imag": [float(z.imag) for z in self.impedance_ohm],
             "cone_velocity_ms": list(self.cone_velocity_ms),
             "port_velocity_ms": list(self.port_velocity_ms),
+            "snapshot_stride": int(self.snapshot_stride),
         }
         if include_snapshots:
             payload["field_snapshots"] = [
@@ -266,9 +268,12 @@ class HybridBoxSolver:
         frequencies_hz: Iterable[float],
         *,
         mic_distance_m: float = 1.0,
+        snapshot_stride: int = 1,
     ) -> tuple[HybridSolverResult, HybridSolverSummary]:
         if mic_distance_m <= 0:
             raise ValueError("Microphone distance must be positive")
+        if snapshot_stride <= 0:
+            raise ValueError("Snapshot stride must be positive")
 
         freq_list: list[float] = []
         spl_list: list[float] = []
@@ -289,6 +294,7 @@ class HybridBoxSolver:
         plane_maxima = {spec.label: 0.0 for spec in self._plane_specs}
         plane_max_coords: dict[str, tuple[float, float, float]] = {}
 
+        snapshot_index = 0
         for freq in frequencies_hz:
             if freq <= 0:
                 continue
@@ -343,22 +349,26 @@ class HybridBoxSolver:
                     max_pressure_rms = peak
                     max_pressure_coords = peak_coords
 
-                snapshots.append(
-                    HybridFieldSnapshot(
-                        frequency_hz=freq,
-                        grid_resolution=self._grid_resolution,
-                        pressure_rms_pa=field,
-                        max_pressure_pa=peak,
-                        max_pressure_coords_m=peak_coords,
-                        cone_velocity_ms=abs(cone_vel),
-                        port_velocity_ms=port_vel,
-                        port_compression_ratio=compression,
-                        port_mach=(port_vel / SPEED_OF_SOUND) if port_vel is not None else None,
-                        plane_label=spec.label,
-                        plane_normal=spec.normal(),
-                        plane_offset_m=self._clamp_offset(spec.offset),
+                if snapshot_index % snapshot_stride == 0:
+                    snapshots.append(
+                        HybridFieldSnapshot(
+                            frequency_hz=freq,
+                            grid_resolution=self._grid_resolution,
+                            pressure_rms_pa=field,
+                            max_pressure_pa=peak,
+                            max_pressure_coords_m=peak_coords,
+                            cone_velocity_ms=abs(cone_vel),
+                            port_velocity_ms=port_vel,
+                            port_compression_ratio=compression,
+                            port_mach=(port_vel / SPEED_OF_SOUND)
+                            if port_vel is not None
+                            else None,
+                            plane_label=spec.label,
+                            plane_normal=spec.normal(),
+                            plane_offset_m=self._clamp_offset(spec.offset),
+                        )
                     )
-                )
+            snapshot_index += 1
 
             pressure = omega * AIR_DENSITY * abs(volume_velocity) / (2 * pi * mic_distance_m)
             spl = 20.0 * log10(max(pressure / P_REF, 1e-12))
@@ -405,6 +415,7 @@ class HybridBoxSolver:
             cone_velocity_ms=cone_velocity,
             port_velocity_ms=port_velocity,
             field_snapshots=snapshots,
+            snapshot_stride=int(snapshot_stride),
         )
         return result, summary
 

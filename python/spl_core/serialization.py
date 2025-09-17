@@ -206,6 +206,12 @@ def hybrid_simulation_request_schema() -> dict[str, Any]:
                 "title": "Field grid resolution",
                 "description": "Number of samples per dimension for interior pressure slices.",
             },
+            "snapshot_stride": {
+                "type": "integer",
+                "minimum": 1,
+                "title": "Snapshot stride",
+                "description": "Capture interior field slices every Nth frequency sample.",
+            },
             "include_snapshots": {
                 "type": "boolean",
                 "description": "Include full pressure rasters in the response payload.",
@@ -265,6 +271,11 @@ def hybrid_simulation_response_schema() -> dict[str, Any]:
             "minimum": 1,
             "description": "Grid resolution used for the pressure field slices.",
         },
+        "snapshot_stride": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Stride applied when recording interior field snapshots.",
+        },
         "snapshot_count": {
             "type": "integer",
             "minimum": 0,
@@ -305,6 +316,7 @@ def hybrid_simulation_response_schema() -> dict[str, Any]:
         "summary",
         "alignment",
         "grid_resolution",
+        "snapshot_stride",
         "snapshot_count",
         "plane_metrics",
     ]

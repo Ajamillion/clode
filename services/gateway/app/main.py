@@ -315,6 +315,7 @@ class HybridRequest(BaseModel):
     mic_distance_m: float = Field(1.0, gt=0)
     drive_voltage: float = Field(2.83, gt=0)
     grid_resolution: int = Field(24, ge=8, le=96)
+    snapshot_stride: int = Field(1, ge=1)
     include_snapshots: bool = Field(True)
 
     def resolve_alignment(self) -> str:
@@ -606,6 +607,7 @@ if FastAPI is not None:  # pragma: no branch
         result, summary = solver.frequency_response(
             payload.frequencies_hz,
             mic_distance_m=payload.mic_distance_m,
+            snapshot_stride=payload.snapshot_stride,
         )
         include_snapshots = payload.include_snapshots
 
@@ -621,6 +623,7 @@ if FastAPI is not None:  # pragma: no branch
                 "summary": summary_dict,
                 "alignment": alignment,
                 "grid_resolution": solver.grid_resolution,
+                "snapshot_stride": result.snapshot_stride,
                 "snapshot_count": len(result.field_snapshots),
                 "plane_metrics": {
                     label: {

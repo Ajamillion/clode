@@ -29,6 +29,8 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   snapshots with JSON Schemas for typed client integration
 - ✅ Hybrid solver hotspot mapping that reports per-plane pressure coordinates and
   minimum port compression ratios for targeted damping and vent tuning analysis
+- ✅ Configurable hybrid snapshot stride so lighter clients can down-sample interior
+  field rasters without losing summary metrics
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites
@@ -56,7 +58,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 5. Open http://localhost:5173 to view the demo enclosure renderer streaming synthetic optimization telemetry.
    The optimisation HUD now records backend runs via `/api/opt/start` and polls `/api/opt/{id}` for convergence data.
 
-   Monte Carlo tolerance sweeps are available via `POST /simulate/sealed/tolerances` and `/simulate/vented/tolerances` for quick manufacturing risk snapshots.
+   Monte Carlo tolerance sweeps are available via `POST /simulate/sealed/tolerances` and `/simulate/vented/tolerances` for quick manufacturing risk snapshots. The hybrid solver request now accepts a `snapshot_stride` field when you need to throttle how many interior pressure slices are captured.
 
 ## Quality checks
 
