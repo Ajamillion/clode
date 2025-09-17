@@ -92,9 +92,9 @@ preserving the long-term vision.
 ## Progress Snapshot (Iteration 15)
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
-- **Milestone M2 – Optimisation Loop:** ~98 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, and the new CI pipeline now provide an end-to-end optimisation timeline backed by the gateway.
-- **Overall programme:** ≈53 % toward the v1.0 roadmap ((1.0 + 0.98 + 0.1 + 0) ÷ 4 milestones).
-- Latest iteration introduced the GitHub Actions CI workflow that runs JS/Python lint/type/test gates, generates Monte Carlo tolerance snapshots, and publishes them as artefacts alongside the existing measurement comparison work.
+- **Milestone M2 – Optimisation Loop:** ~99 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, CI automation, and the new schema catalog endpoints/CLI now provide an end-to-end optimisation timeline backed by the gateway.
+- **Overall programme:** ≈53 % toward the v1.0 roadmap ((1.0 + 0.99 + 0.1 + 0) ÷ 4 milestones).
+- Latest iteration introduced solver schema catalog endpoints on the gateway plus a CLI helper that writes JSON files for downstream tooling, rounding out the typed integration story alongside the CI tolerance artefacts.
 
 ## 4. Completion Strategy
 
@@ -109,7 +109,7 @@ preserving the long-term vision.
 2. **Gateway Evolution**
    - ✅ Replace optional FastAPI shim with concrete app, including async task manager and SQLite persistence.
    - ✅ Define WebSocket protocol aligning with Studio’s optimisation HUD.
-   - ➡️ Add export/download endpoints once geometry serializers land.
+   - ✅ Expose solver schema catalogs via REST endpoints and CLI exports so typed clients can stay in sync with `spl_core` contracts.
    - ✅ Introduce measurement upload endpoints wiring through to the simulation core ingestion queue.
 3. **Studio Integration**
    - ✅ Render SPL/impedance plots from gateway responses with historical overlays.

@@ -47,7 +47,7 @@
 
 ### 4.2 Simulation Gateway (`services/gateway`)
 - FastAPI app that:
-  - Exposes REST endpoints for job submission, driver queries, exports, and aggregation (`/opt/runs`, `/opt/stats`).
+  - Exposes REST endpoints for job submission, driver queries, schema catalogs, and aggregation (`/opt/runs`, `/opt/stats`, `/schemas/solvers`).
   - Returns alignment summaries (Fc/Qtc, Fb, -3 dB edges, velocity peaks) alongside solver traces.
   - Offers Monte Carlo tolerance endpoints to summarise manufacturing risk (excursion, port velocity) directly from the gateway.
   - Provides measurement preview + comparison endpoints that parse Klippel `.dat` / REW `.mdat` uploads and report SPL/impedance deltas against solver predictions.

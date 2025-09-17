@@ -7,6 +7,33 @@ const runs = new Map()
 const sockets = new Set()
 const simulations = new Map()
 
+const solverSchemaCatalog = {
+  sealed: {
+    request: {
+      title: 'SealedBoxSimulationRequest',
+      type: 'object',
+      required: ['driver', 'box', 'frequencies_hz']
+    },
+    response: {
+      title: 'SealedBoxSimulationResponse',
+      type: 'object',
+      required: ['summary', 'fc_hz', 'qtc']
+    }
+  },
+  vented: {
+    request: {
+      title: 'VentedBoxSimulationRequest',
+      type: 'object',
+      required: ['driver', 'box', 'frequencies_hz']
+    },
+    response: {
+      title: 'VentedBoxSimulationResponse',
+      type: 'object',
+      required: ['summary', 'fb_hz', 'max_port_velocity_ms']
+    }
+  }
+}
+
 function nowSeconds() {
   return Date.now() / 1000
 }
@@ -321,6 +348,22 @@ const server = http.createServer((req, res) => {
     }
     const total = Object.values(counts).reduce((sum, value) => sum + value, 0)
     sendJson(res, 200, { counts, total })
+    return
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/schemas/solvers') {
+    sendJson(res, 200, { solvers: solverSchemaCatalog })
+    return
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/schemas/solvers/')) {
+    const alignment = url.pathname.split('/').pop()?.toLowerCase()
+    const entry = alignment ? solverSchemaCatalog[alignment] : null
+    if (!entry) {
+      sendJson(res, 404, { error: 'unknown solver alignment' })
+      return
+    }
+    sendJson(res, 200, { alignment, request: entry.request, response: entry.response })
     return
   }
 

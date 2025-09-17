@@ -13,3 +13,4 @@ __pycache__/
 coverage/
 *.log
 tolerance-snapshots/
+schema-exports/

@@ -47,6 +47,7 @@ from spl_core import (
     parse_klippel_dat,
     parse_rew_mdat,
     run_tolerance_analysis,
+    solver_json_schemas,
 )
 
 from .store import VALID_STATUSES, RunStore
@@ -68,6 +69,12 @@ DEFAULT_ALIGNMENT = "sealed"
 
 app: Any
 _store: RunStore | None = None
+
+
+def solver_schema_catalog() -> dict[str, dict[str, dict[str, Any]]]:
+    """Return the JSON schema catalog for the available solver families."""
+
+    return solver_json_schemas()
 
 
 def _model_dump(model: BaseModel) -> dict[str, Any]:  # pragma: no cover - helper for pydantic v1/v2
@@ -614,6 +621,23 @@ if FastAPI is not None:  # pragma: no branch
         counts = _store.status_counts()
         total = sum(counts.values())
         return {"counts": counts, "total": total}
+
+    @app.get("/schemas/solvers")
+    async def list_solver_schemas() -> dict[str, Any]:
+        """Return the JSON schema catalog for sealed and vented solvers."""
+
+        return {"solvers": solver_schema_catalog()}
+
+    @app.get("/schemas/solvers/{alignment}")
+    async def fetch_solver_schema(alignment: str) -> dict[str, Any]:
+        """Return the JSON schemas for a specific solver alignment."""
+
+        catalog = solver_schema_catalog()
+        key = alignment.lower()
+        entry = catalog.get(key)
+        if entry is None:
+            raise HTTPException(status_code=404, detail="Solver alignment not found")
+        return {"alignment": key, "request": entry["request"], "response": entry["response"]}
 else:  # pragma: no cover
     app = None
 
@@ -630,4 +654,5 @@ __all__ = [
     "ToleranceOverrides",
     "SealedToleranceRequest",
     "VentedToleranceRequest",
+    "solver_schema_catalog",
 ]

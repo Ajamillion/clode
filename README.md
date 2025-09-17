@@ -11,6 +11,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Alignment summary metrics (-3 dB bandwidth, velocity peaks) exposed alongside solver responses
 - ✅ Suspension compliance curve helper and excursion headroom metrics for sealed + vented solvers
 - ✅ JSON schema exports for solver request/response contracts (see [`spl_core/serialization.py`](python/spl_core/serialization.py))
+- ✅ Solver schema catalog exposed via `/schemas/solvers` endpoints and a CLI export helper for typed client generation
 - ✅ Python linting and type-checking automation wired into the pnpm workspace scripts
 - ✅ FastAPI optimisation run API with SQLite-backed persistence and background solver tasks
 - ✅ Run history API with status aggregates powering the Studio timeline panel and alignment toggles
@@ -57,6 +58,7 @@ pnpm lint        # eslint for the web workspace + ruff for python modules
 pnpm typecheck   # tsconfig builds + mypy over python/services
 pnpm py:test     # Python unit tests
 pnpm py:tolerance # writes JSON reports into ./tolerance-snapshots
+pnpm py:schemas  # writes solver request/response schemas into ./schema-exports
 ```
 
 The tolerance helper accepts additional options (`--iterations`, `--seed`, `--vented-iterations`, etc.). Pass them after `--` when using the pnpm script, for example `pnpm py:tolerance -- --iterations 256`.
@@ -85,5 +87,10 @@ and are exposed via a lightweight FastAPI gateway stub in
 ```bash
 python -m unittest discover -s python/tests
 ```
+
+## Schema exports & API catalog
+
+- Fetch solver request/response schemas directly from the gateway via `GET /schemas/solvers` or `GET /schemas/solvers/{alignment}`.
+- Generate local JSON files for tooling by running `pnpm py:schemas`, which writes `catalog.json` plus per-solver request/response documents to `./schema-exports`.
 
 Contributions and feedback are welcome as we grow Bagger-SPL toward an offline-first yet cloud-capable toolchain.
