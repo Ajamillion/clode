@@ -116,5 +116,6 @@
 4. Define shared configuration schema (`bagger.config.jsonschema`) and auto-generate TS/Python types.
 5. ✅ Wire Studio SPL plot + WebSocket telemetry using mocked backend and expose persisted run history in the UI.
 6. ✅ Set up CI pipeline executing lint/type/test on both Python and TypeScript stacks, publishing tolerance artefacts for downstream dashboards.
+7. ⏳ Close M3 readiness gaps by adding Playwright-driven Studio regression coverage and Docker Compose orchestration for the gateway + solver stack.
 
 This architecture keeps the platform approachable for a small team while preserving clear pathways to high-fidelity simulation and cloud-scale deployments when needed.
