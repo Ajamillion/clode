@@ -261,6 +261,31 @@ def hybrid_simulation_response_schema() -> dict[str, Any]:
             min_items=1,
             description="Predicted port air velocity magnitude (zeros for sealed systems).",
         ),
+        "voice_coil_temperature_c": _number_array_schema(
+            title="Voice-coil temperature (°C)",
+            min_items=1,
+            description="Estimated steady-state coil temperature derived from the thermal network.",
+        ),
+        "magnet_temperature_c": _number_array_schema(
+            title="Magnet temperature (°C)",
+            min_items=1,
+            description="Estimated motor/pole temperature rise.",
+        ),
+        "basket_temperature_c": _number_array_schema(
+            title="Basket temperature (°C)",
+            min_items=1,
+            description="Estimated basket temperature rise.",
+        ),
+        "voice_coil_power_w": _number_array_schema(
+            title="Voice-coil power (W)",
+            min_items=1,
+            description="Electrical power dissipated in the voice coil per frequency sample.",
+        ),
+        "thermal_compression_db": _number_array_schema(
+            title="Thermal compression (dB)",
+            min_items=1,
+            description="Estimated SPL drop from resistance growth due to coil heating.",
+        ),
         "field_snapshots": {
             "type": "array",
             "items": snapshot_schema,
@@ -316,6 +341,11 @@ def hybrid_simulation_response_schema() -> dict[str, Any]:
         "impedance_imag",
         "cone_velocity_ms",
         "port_velocity_ms",
+        "voice_coil_temperature_c",
+        "magnet_temperature_c",
+        "basket_temperature_c",
+        "voice_coil_power_w",
+        "thermal_compression_db",
         "field_snapshots",
         "summary",
         "alignment",

@@ -38,7 +38,7 @@
 - **Modules**:
   - `drivers`: TS parameter ingestion, validation, interpolation (kNN + GP-lite) plus suspension compliance curve synthesis and excursion utilities.
   - `mechanics`: Suspension/BL curve estimators with physics-informed regularization (progressively migrating out of `drivers`).
-  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics) plus the new hybrid pressure-field prototype that previews FEM/BEM outputs (interior pressure slices, hotspot coordinate mapping, port compression heuristics, Mach tracking, configurable snapshot stride, suspension creep modelling) without heavy numerical dependencies.
+  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics) plus the new hybrid pressure-field prototype that previews FEM/BEM outputs (interior pressure slices, hotspot coordinate mapping, port compression heuristics, Mach tracking, configurable snapshot stride, suspension creep modelling, lightweight thermal network for coil/pole/basket heating and thermal compression telemetry) without heavy numerical dependencies.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis (initial sealed/vented sweep landed) and reciprocity/thermal sanity checks.
   - `measurements`: Klippel/REW ingestion, trace alignment, heuristic diagnosis (level trims, leakage hints, port retunes), and measurement-vs-simulation delta statistics exposed through both the FastAPI endpoints and a standalone CLI.

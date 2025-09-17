@@ -5,6 +5,7 @@ from .hybrid import (
     HybridFieldSnapshot,
     HybridSolverResult,
     HybridSolverSummary,
+    ThermalNetwork,
 )
 from .sealed import SealedAlignmentSummary, SealedBoxResponse, SealedBoxSolver
 from .vented import VentedAlignmentSummary, VentedBoxResponse, VentedBoxSolver
@@ -20,4 +21,5 @@ __all__ = [
     "HybridSolverResult",
     "HybridSolverSummary",
     "HybridFieldSnapshot",
+    "ThermalNetwork",
 ]

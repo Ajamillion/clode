@@ -33,7 +33,11 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   field rasters without losing summary metrics
 - ✅ Hybrid suspension creep model with API toggle and summary telemetry describing
   the low-frequency compliance gain and time constants
+- ✅ Hybrid thermal network estimating coil/pole/basket temperature rise with thermal
+  compression telemetry in solver responses and gateway payloads
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
+
+Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈92 %**, overall ≈73 % toward the v1.0 target.
 
 ## Prerequisites
 - Node.js 20+

@@ -98,6 +98,48 @@ def test_hybrid_solver_reports_port_compression_metrics() -> None:
         assert port_snapshot.port_compression_ratio < 1.0
 
 
+def test_hybrid_solver_reports_thermal_metrics() -> None:
+    driver = _demo_driver()
+    box = BoxDesign(volume_l=36.0, leakage_q=10.0)
+    solver = HybridBoxSolver(driver, box, drive_voltage=16.0, grid_resolution=16)
+
+    result, summary = solver.frequency_response([25.0, 60.0])
+
+    assert result.voice_coil_temperature_c
+    assert result.magnet_temperature_c
+    assert result.basket_temperature_c
+    assert result.voice_coil_power_w
+    assert result.thermal_compression_db
+    assert len(result.voice_coil_temperature_c) == len(result.frequency_hz)
+    assert all(temp >= summary.thermal_reference_temp_c for temp in result.basket_temperature_c)
+    assert summary.max_voice_coil_temp_c is not None
+    assert summary.max_voice_coil_temp_c >= max(result.voice_coil_temperature_c) - 1e-6
+    assert summary.max_magnet_temp_c is not None
+    assert summary.max_basket_temp_c is not None
+    assert summary.max_voice_coil_power_w is not None
+    assert summary.max_voice_coil_power_w >= max(result.voice_coil_power_w) - 1e-6
+    assert summary.thermal_time_constants_s is not None
+    assert len(summary.thermal_time_constants_s) == 3
+    assert summary.max_thermal_compression_db is not None
+    assert summary.max_thermal_compression_db >= 0.0
+
+    compression_values = [value for value in result.thermal_compression_db if value > 0.0]
+    if compression_values:
+        assert summary.max_thermal_compression_db >= max(compression_values) - 1e-6
+
+    payload = summary.to_dict()
+    for key in [
+        "max_voice_coil_temp_c",
+        "max_magnet_temp_c",
+        "max_basket_temp_c",
+        "max_voice_coil_power_w",
+        "max_thermal_compression_db",
+        "thermal_time_constants_s",
+        "thermal_reference_temp_c",
+    ]:
+        assert key in payload
+
+
 def test_hybrid_solver_matches_lumped_spl_baseline() -> None:
     driver = _demo_driver()
     box = BoxDesign(volume_l=40.0)

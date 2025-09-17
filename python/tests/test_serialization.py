@@ -108,6 +108,14 @@ class SchemaExportTests(unittest.TestCase):
         array_opts = [opt for opt in creep_time["anyOf"] if opt.get("type") == "array"]
         self.assertTrue(array_opts)
         self.assertIn("snapshot_stride", schema["required"])
+        for key in [
+            "voice_coil_temperature_c",
+            "magnet_temperature_c",
+            "basket_temperature_c",
+            "voice_coil_power_w",
+            "thermal_compression_db",
+        ]:
+            self.assertIn(key, schema["properties"])
 
     def test_solver_catalog_lists_both_solvers(self) -> None:
         catalog = solver_json_schemas()

@@ -27,6 +27,9 @@ from ..drivers import (
 )
 from .sealed import P_REF
 
+COPPER_TEMP_COEFF = 0.0039
+AMBIENT_TEMPERATURE_C = 25.0
+
 
 @dataclass(slots=True)
 class HybridFieldSnapshot:
@@ -91,6 +94,11 @@ class HybridSolverResult:
     impedance_ohm: list[complex]
     cone_velocity_ms: list[float]
     port_velocity_ms: list[float]
+    voice_coil_temperature_c: list[float]
+    magnet_temperature_c: list[float]
+    basket_temperature_c: list[float]
+    voice_coil_power_w: list[float]
+    thermal_compression_db: list[float]
     field_snapshots: list[HybridFieldSnapshot]
     snapshot_stride: int = 1
 
@@ -113,6 +121,11 @@ class HybridSolverResult:
             "impedance_imag": [float(z.imag) for z in self.impedance_ohm],
             "cone_velocity_ms": list(self.cone_velocity_ms),
             "port_velocity_ms": list(self.port_velocity_ms),
+            "voice_coil_temperature_c": list(self.voice_coil_temperature_c),
+            "magnet_temperature_c": list(self.magnet_temperature_c),
+            "basket_temperature_c": list(self.basket_temperature_c),
+            "voice_coil_power_w": list(self.voice_coil_power_w),
+            "thermal_compression_db": list(self.thermal_compression_db),
             "snapshot_stride": int(self.snapshot_stride),
         }
         if include_snapshots:
@@ -137,6 +150,13 @@ class HybridSolverSummary:
     plane_max_pressure_location_m: dict[str, tuple[float, float, float]]
     suspension_creep_ratio: float | None = None
     suspension_creep_time_constants_s: tuple[float, ...] | None = None
+    max_voice_coil_temp_c: float | None = None
+    max_magnet_temp_c: float | None = None
+    max_basket_temp_c: float | None = None
+    max_voice_coil_power_w: float | None = None
+    max_thermal_compression_db: float | None = None
+    thermal_time_constants_s: tuple[float, float, float] | None = None
+    thermal_reference_temp_c: float = AMBIENT_TEMPERATURE_C
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -162,6 +182,17 @@ class HybridSolverSummary:
                 if self.suspension_creep_time_constants_s is not None
                 else None
             ),
+            "max_voice_coil_temp_c": self.max_voice_coil_temp_c,
+            "max_magnet_temp_c": self.max_magnet_temp_c,
+            "max_basket_temp_c": self.max_basket_temp_c,
+            "max_voice_coil_power_w": self.max_voice_coil_power_w,
+            "max_thermal_compression_db": self.max_thermal_compression_db,
+            "thermal_time_constants_s": (
+                list(self.thermal_time_constants_s)
+                if self.thermal_time_constants_s is not None
+                else None
+            ),
+            "thermal_reference_temp_c": self.thermal_reference_temp_c,
         }
 
 
@@ -191,6 +222,35 @@ class _FieldPlane:
             return (0.0, 0.0, 1.0)
         msg = f"Unsupported plane axis '{self.axis}'"
         raise ValueError(msg)
+
+
+@dataclass(slots=True)
+class ThermalNetwork:
+    """Simple three-node Cauer network capturing thermal rise."""
+
+    ambient_c: float = AMBIENT_TEMPERATURE_C
+    r_coil_to_pole: float = 0.35  # K/W
+    r_pole_to_basket: float = 0.45  # K/W
+    r_basket_to_air: float = 0.6  # K/W
+    c_coil_j_per_c: float = 8.0
+    c_pole_j_per_c: float = 30.0
+    c_basket_j_per_c: float = 45.0
+
+    def steady_state(self, coil_power_w: float) -> tuple[float, float, float]:
+        """Return coil/pole/basket temperature at steady state."""
+
+        power = max(coil_power_w, 0.0)
+        basket_temp = self.ambient_c + power * self.r_basket_to_air
+        pole_temp = basket_temp + power * self.r_pole_to_basket
+        coil_temp = pole_temp + power * self.r_coil_to_pole
+        return coil_temp, pole_temp, basket_temp
+
+    def time_constants(self) -> tuple[float, float, float]:
+        return (
+            self.c_coil_j_per_c * self.r_coil_to_pole,
+            self.c_pole_j_per_c * self.r_pole_to_basket,
+            self.c_basket_j_per_c * self.r_basket_to_air,
+        )
 
 
 class HybridBoxSolver:
@@ -242,6 +302,8 @@ class HybridBoxSolver:
             ]
         self._creep_gain = 1.0 + sum(weight for weight, _ in self._creep_terms)
         self._creep_time_constants = tuple(tau for _, tau in self._creep_terms)
+
+        self._thermal_network = ThermalNetwork()
 
         self._port: PortGeometry | None = None
         self._cab_acoustic: float | None = None
@@ -310,6 +372,11 @@ class HybridBoxSolver:
         plane_counts = {spec.label: 0 for spec in self._plane_specs}
         plane_maxima = {spec.label: 0.0 for spec in self._plane_specs}
         plane_max_coords: dict[str, tuple[float, float, float]] = {}
+        coil_temperatures: list[float] = []
+        magnet_temperatures: list[float] = []
+        basket_temperatures: list[float] = []
+        coil_power_w: list[float] = []
+        compression_losses: list[float] = []
 
         snapshot_index = 0
         for freq in frequencies_hz:
@@ -395,6 +462,26 @@ class HybridBoxSolver:
             impedance.append(ze)
             cone_velocity.append(abs(cone_vel))
             port_velocity.append(port_vel or 0.0)
+
+            current = self.drive_voltage / ze
+            coil_power = abs(current) ** 2 * self.driver.re_ohm
+            coil_temp, magnet_temp, basket_temp = self._thermal_network.steady_state(coil_power)
+            hot_resistance = self.driver.re_ohm * (
+                1.0
+                + COPPER_TEMP_COEFF
+                * max(coil_temp - self._thermal_network.ambient_c, 0.0)
+            )
+            ze_hot = ze + (hot_resistance - self.driver.re_ohm)
+            hot_current = self.drive_voltage / ze_hot
+            ratio = abs(hot_current) / max(abs(current), 1e-9)
+            ratio = min(max(ratio, 1e-9), 1.0)
+            compression_drop = max(0.0, -20.0 * log10(ratio))
+
+            coil_power_w.append(coil_power)
+            coil_temperatures.append(coil_temp)
+            magnet_temperatures.append(magnet_temp)
+            basket_temperatures.append(basket_temp)
+            compression_losses.append(compression_drop)
             if port_vel is not None:
                 max_port_velocity = max(max_port_velocity, port_vel)
                 max_port_mach = max(max_port_mach, port_vel / SPEED_OF_SOUND)
@@ -427,6 +514,13 @@ class HybridBoxSolver:
             suspension_creep_time_constants_s=(
                 self._creep_time_constants if self._creep_terms else None
             ),
+            max_voice_coil_temp_c=max(coil_temperatures) if coil_temperatures else None,
+            max_magnet_temp_c=max(magnet_temperatures) if magnet_temperatures else None,
+            max_basket_temp_c=max(basket_temperatures) if basket_temperatures else None,
+            max_voice_coil_power_w=max(coil_power_w) if coil_power_w else None,
+            max_thermal_compression_db=max(compression_losses) if compression_losses else None,
+            thermal_time_constants_s=self._thermal_network.time_constants(),
+            thermal_reference_temp_c=self._thermal_network.ambient_c,
         )
 
         result = HybridSolverResult(
@@ -435,6 +529,11 @@ class HybridBoxSolver:
             impedance_ohm=impedance,
             cone_velocity_ms=cone_velocity,
             port_velocity_ms=port_velocity,
+            voice_coil_temperature_c=coil_temperatures,
+            magnet_temperature_c=magnet_temperatures,
+            basket_temperature_c=basket_temperatures,
+            voice_coil_power_w=coil_power_w,
+            thermal_compression_db=compression_losses,
             field_snapshots=snapshots,
             snapshot_stride=int(snapshot_stride),
         )
@@ -629,4 +728,5 @@ __all__ = [
     "HybridSolverResult",
     "HybridSolverSummary",
     "HybridFieldSnapshot",
+    "ThermalNetwork",
 ]

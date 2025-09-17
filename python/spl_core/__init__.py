@@ -5,6 +5,7 @@ from .acoustics.hybrid import (
     HybridFieldSnapshot,
     HybridSolverResult,
     HybridSolverSummary,
+    ThermalNetwork,
 )
 from .acoustics.sealed import SealedAlignmentSummary, SealedBoxResponse, SealedBoxSolver
 from .acoustics.vented import VentedAlignmentSummary, VentedBoxResponse, VentedBoxSolver
@@ -76,6 +77,7 @@ __all__ = [
     "HybridSolverResult",
     "HybridSolverSummary",
     "HybridFieldSnapshot",
+    "ThermalNetwork",
     "dataclass_schema",
     "hybrid_simulation_request_schema",
     "hybrid_simulation_response_schema",
