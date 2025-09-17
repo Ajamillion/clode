@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import os
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 if TYPE_CHECKING:  # pragma: no cover
     from fastapi import BackgroundTasks, FastAPI, HTTPException, UploadFile
@@ -37,6 +37,7 @@ from spl_core import (
     DEFAULT_TOLERANCES,
     BoxDesign,
     DriverParameters,
+    HybridBoxSolver,
     MeasurementTrace,
     PortGeometry,
     SealedBoxSolver,
@@ -118,6 +119,34 @@ def _build_metrics(
         metrics["safe_drive_voltage_v"] = safe_drive
     metrics.update(extras)
     return metrics
+
+
+def _hybrid_solver_from_request(payload: HybridRequest) -> tuple[str, HybridBoxSolver]:
+    try:
+        alignment = payload.resolve_alignment()
+        driver = payload.driver.to_driver()
+        box: BoxDesign | VentedBoxDesign
+        if alignment == "vented":
+            if payload.port is None:
+                raise ValueError("Port parameters required for vented alignment")
+            box = VentedBoxDesign(
+                volume_l=payload.box.volume_l,
+                leakage_q=payload.box.leakage_q,
+                port=payload.port.to_port(),
+            )
+        else:
+            box = payload.box.to_box()
+            alignment = "sealed"
+
+        solver = HybridBoxSolver(
+            driver,
+            box,
+            drive_voltage=payload.drive_voltage,
+            grid_resolution=int(payload.grid_resolution),
+        )
+    except ValueError as exc:  # pragma: no cover - validation surface
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return alignment, solver
 
 
 def _measurement_from_payload(payload: MeasurementData) -> MeasurementTrace:
@@ -275,6 +304,29 @@ class VentedRequest(BaseModel):
     frequencies_hz: list[float] = Field(..., min_items=1)
     mic_distance_m: float = Field(1.0, gt=0)
     drive_voltage: float = Field(2.83, gt=0)
+
+
+class HybridRequest(BaseModel):
+    driver: DriverPayload
+    box: BoxPayload
+    port: PortPayload | None = Field(None)
+    alignment: Literal["sealed", "vented", "auto"] | None = Field(None)
+    frequencies_hz: list[float] = Field(..., min_items=1)
+    mic_distance_m: float = Field(1.0, gt=0)
+    drive_voltage: float = Field(2.83, gt=0)
+    grid_resolution: int = Field(24, ge=8, le=96)
+    include_snapshots: bool = Field(True)
+
+    def resolve_alignment(self) -> str:
+        if self.alignment is None:
+            return "vented" if self.port is not None else "sealed"
+        preferred = self.alignment.lower()
+        if preferred == "auto":
+            return "vented" if self.port is not None else "sealed"
+        if preferred in {"sealed", "vented"}:
+            return preferred
+        msg = "alignment must be 'sealed', 'vented', or 'auto'"
+        raise ValueError(msg)
 
 
 class MeasurementData(BaseModel):
@@ -547,6 +599,39 @@ if FastAPI is not None:  # pragma: no branch
             }
         )
         return payload_dict
+
+    @app.post("/simulate/hybrid")
+    async def simulate_hybrid(payload: HybridRequest) -> dict[str, Any]:
+        alignment, solver = _hybrid_solver_from_request(payload)
+        result, summary = solver.frequency_response(
+            payload.frequencies_hz,
+            mic_distance_m=payload.mic_distance_m,
+        )
+        include_snapshots = payload.include_snapshots
+
+        response_payload = result.to_dict(include_snapshots=include_snapshots)
+        if not include_snapshots:
+            response_payload["field_snapshots"] = [
+                snapshot.to_dict(include_pressure=False) for snapshot in result.field_snapshots
+            ]
+
+        summary_dict = summary.to_dict()
+        response_payload.update(
+            {
+                "summary": summary_dict,
+                "alignment": alignment,
+                "grid_resolution": solver.grid_resolution,
+                "snapshot_count": len(result.field_snapshots),
+                "plane_metrics": {
+                    label: {
+                        "max_pressure_pa": summary.plane_max_pressure_pa[label],
+                        "mean_pressure_pa": summary.plane_mean_pressure_pa[label],
+                    }
+                    for label in summary.plane_max_pressure_pa
+                },
+            }
+        )
+        return response_payload
 
     @app.post("/simulate/sealed/tolerances")
     async def sealed_tolerances(payload: SealedToleranceRequest) -> dict[str, Any]:

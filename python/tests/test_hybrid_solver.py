@@ -33,17 +33,24 @@ def test_hybrid_solver_pressure_hotspot_near_driver() -> None:
     solver = HybridBoxSolver(driver, box, drive_voltage=4.5, grid_resolution=18)
 
     result, summary = solver.frequency_response([40.0])
-    snapshot = result.field_snapshots[0]
+    driver_snapshot = next(
+        (snap for snap in result.field_snapshots if snap.plane_label == "driver-plane"),
+        result.field_snapshots[0],
+    )
 
-    centre_index = snapshot.grid_resolution // 2
-    centre_pressure = snapshot.pressure_at(centre_index, centre_index)
-    corner_pressure = snapshot.pressure_at(0, 0)
+    centre_index = driver_snapshot.grid_resolution // 2
+    centre_pressure = driver_snapshot.pressure_at(centre_index, centre_index)
+    corner_pressure = driver_snapshot.pressure_at(0, 0)
 
     assert centre_pressure > corner_pressure
-    assert snapshot.port_velocity_ms is None
+    assert driver_snapshot.port_velocity_ms is None
+    assert driver_snapshot.plane_label == "driver-plane"
+    assert driver_snapshot.plane_normal == (0.0, 0.0, 1.0)
     assert summary.max_port_velocity_ms is None
     assert summary.max_internal_pressure_pa >= centre_pressure
     assert summary.mean_internal_pressure_pa > 0.0
+    assert summary.plane_max_pressure_pa[driver_snapshot.plane_label] >= centre_pressure
+    assert summary.plane_mean_pressure_pa[driver_snapshot.plane_label] > 0.0
 
 
 def test_hybrid_solver_reports_port_compression_metrics() -> None:
@@ -53,17 +60,22 @@ def test_hybrid_solver_reports_port_compression_metrics() -> None:
     solver = HybridBoxSolver(driver, box, drive_voltage=18.0, grid_resolution=18)
 
     result, summary = solver.frequency_response([28.0, 36.0, 44.0])
-    snapshot = result.field_snapshots[-1]
+    port_snapshot = next(
+        (snap for snap in result.field_snapshots if snap.plane_label == "port-plane"),
+        result.field_snapshots[-1],
+    )
 
-    assert snapshot.port_velocity_ms is not None
-    assert snapshot.port_compression_ratio is not None
+    assert port_snapshot.port_velocity_ms is not None
+    assert port_snapshot.port_compression_ratio is not None
     assert summary.max_port_velocity_ms is not None
     assert summary.max_port_velocity_ms > 0.0
     assert summary.max_port_mach is not None
     assert summary.max_port_mach > 0.0
+    assert summary.plane_max_pressure_pa[port_snapshot.plane_label] >= port_snapshot.max_pressure_pa
+    assert port_snapshot.plane_normal == (0.0, 1.0, 0.0)
 
-    if snapshot.port_velocity_ms > 15.0:
-        assert snapshot.port_compression_ratio < 1.0
+    if port_snapshot.port_velocity_ms > 15.0:
+        assert port_snapshot.port_compression_ratio < 1.0
 
 
 def test_hybrid_solver_matches_lumped_spl_baseline() -> None:
@@ -73,7 +85,9 @@ def test_hybrid_solver_matches_lumped_spl_baseline() -> None:
 
     result, _ = solver.frequency_response([20.0, 40.0, 80.0])
     assert len(result.frequency_hz) == 3
-    assert len(result.field_snapshots) == 3
+    assert len(result.field_snapshots) >= len(result.frequency_hz)
+    labels = {snap.plane_label for snap in result.field_snapshots}
+    assert "mid-plane" in labels
 
     # SPL should track the sealed-box lumped model within a small tolerance for low
     # frequencies because the hybrid solver reuses the same underlying impedance
@@ -81,3 +95,23 @@ def test_hybrid_solver_matches_lumped_spl_baseline() -> None:
     spl = result.spl_db
     assert not isclose(spl[0], spl[1], rel_tol=0.25)
     assert spl[2] > spl[0]
+
+
+def test_hybrid_snapshot_serialisation_includes_plane_metadata() -> None:
+    driver = _demo_driver()
+    box = BoxDesign(volume_l=30.0)
+    solver = HybridBoxSolver(driver, box, drive_voltage=3.0, grid_resolution=12)
+
+    result, summary = solver.frequency_response([35.0])
+
+    payload_without_fields = result.to_dict()
+    assert "field_snapshots" not in payload_without_fields
+
+    payload_with_fields = result.to_dict(include_snapshots=True)
+    assert "field_snapshots" in payload_with_fields
+    snapshot_payload = payload_with_fields["field_snapshots"][0]
+    assert "plane_label" in snapshot_payload
+    assert "pressure_rms_pa" in snapshot_payload
+    assert summary.plane_max_pressure_pa[snapshot_payload["plane_label"]] >= snapshot_payload[
+        "max_pressure_pa"
+    ]

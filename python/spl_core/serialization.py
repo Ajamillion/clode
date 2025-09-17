@@ -12,6 +12,7 @@ from dataclasses import MISSING, fields, is_dataclass
 from types import UnionType
 from typing import Any, Union, get_args, get_origin, get_type_hints
 
+from .acoustics.hybrid import HybridFieldSnapshot, HybridSolverSummary
 from .acoustics.sealed import SealedAlignmentSummary
 from .acoustics.vented import VentedAlignmentSummary
 from .drivers import BoxDesign, DriverParameters, PortGeometry, VentedBoxDesign
@@ -167,6 +168,147 @@ def vented_simulation_response_schema() -> dict[str, Any]:
     return schema
 
 
+def hybrid_simulation_request_schema() -> dict[str, Any]:
+    """Return the JSON schema describing the hybrid solver request payload."""
+
+    return {
+        "$schema": SCHEMA_DRAFT,
+        "title": "HybridBoxSimulationRequest",
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["driver", "box", "frequencies_hz"],
+        "properties": {
+            "driver": dataclass_schema(DriverParameters),
+            "box": dataclass_schema(BoxDesign),
+            "port": dataclass_schema(PortGeometry),
+            "alignment": {
+                "type": "string",
+                "enum": ["sealed", "vented", "auto"],
+                "description": "Preferred alignment. Use 'auto' to infer from port presence.",
+            },
+            "frequencies_hz": _number_array_schema(
+                title="Frequency bins (Hz)",
+                min_items=1,
+                description="Discrete frequencies to evaluate.",
+            ),
+            "mic_distance_m": _positive_number_schema(
+                "Microphone distance (m)",
+                description="Distance from driver to virtual microphone.",
+            ),
+            "drive_voltage": _positive_number_schema(
+                "Drive voltage (Vrms)",
+                description="Input voltage driving the system (RMS).",
+            ),
+            "grid_resolution": {
+                "type": "integer",
+                "minimum": 8,
+                "maximum": 96,
+                "title": "Field grid resolution",
+                "description": "Number of samples per dimension for interior pressure slices.",
+            },
+            "include_snapshots": {
+                "type": "boolean",
+                "description": "Include full pressure rasters in the response payload.",
+            },
+        },
+    }
+
+
+def hybrid_simulation_response_schema() -> dict[str, Any]:
+    """Return the JSON schema describing the hybrid solver response payload."""
+
+    summary_schema = dataclass_schema(HybridSolverSummary)
+    snapshot_schema = dataclass_schema(HybridFieldSnapshot)
+
+    properties: dict[str, Any] = {
+        "frequency_hz": _number_array_schema(
+            title="Frequency bins (Hz)",
+            min_items=1,
+            description="Frequencies where SPL/impedance were evaluated.",
+        ),
+        "spl_db": _number_array_schema(
+            title="Sound pressure level (dB)",
+            min_items=1,
+            description="Predicted on-axis SPL magnitude.",
+        ),
+        "impedance_real": _number_array_schema(
+            title="Electrical impedance (real)",
+            min_items=1,
+            description="Real component of electrical impedance (ohms).",
+        ),
+        "impedance_imag": _number_array_schema(
+            title="Electrical impedance (imag)",
+            min_items=1,
+            description="Imaginary component of electrical impedance (ohms).",
+        ),
+        "cone_velocity_ms": _number_array_schema(
+            title="Cone velocity (m/s)",
+            min_items=1,
+            description="Voice-coil/cone velocity magnitude.",
+        ),
+        "port_velocity_ms": _number_array_schema(
+            title="Port velocity (m/s)",
+            min_items=1,
+            description="Predicted port air velocity magnitude (zeros for sealed systems).",
+        ),
+        "field_snapshots": {
+            "type": "array",
+            "items": snapshot_schema,
+        },
+        "summary": summary_schema,
+        "alignment": {
+            "type": "string",
+            "description": "Alignment simulated by the hybrid solver (sealed or vented).",
+        },
+        "grid_resolution": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Grid resolution used for the pressure field slices.",
+        },
+        "snapshot_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of field snapshots returned across all frequencies.",
+        },
+        "plane_metrics": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "max_pressure_pa": {"type": "number"},
+                    "mean_pressure_pa": {"type": "number"},
+                },
+                "required": ["max_pressure_pa", "mean_pressure_pa"],
+            },
+        },
+    }
+
+    required = [
+        "frequency_hz",
+        "spl_db",
+        "impedance_real",
+        "impedance_imag",
+        "cone_velocity_ms",
+        "port_velocity_ms",
+        "field_snapshots",
+        "summary",
+        "alignment",
+        "grid_resolution",
+        "snapshot_count",
+        "plane_metrics",
+    ]
+
+    return {
+        "$schema": SCHEMA_DRAFT,
+        "title": "HybridBoxSimulationResponse",
+        "type": "object",
+        "additionalProperties": False,
+        "properties": properties,
+        "required": required,
+    }
+
+
 def sealed_simulation_schema() -> dict[str, dict[str, Any]]:
     """Return both request and response schemas for the sealed solver."""
 
@@ -185,12 +327,22 @@ def vented_simulation_schema() -> dict[str, dict[str, Any]]:
     }
 
 
+def hybrid_simulation_schema() -> dict[str, dict[str, Any]]:
+    """Return request/response schemas for the hybrid solver."""
+
+    return {
+        "request": hybrid_simulation_request_schema(),
+        "response": hybrid_simulation_response_schema(),
+    }
+
+
 def solver_json_schemas() -> dict[str, dict[str, dict[str, Any]]]:
     """Return a catalog of solver schemas keyed by solver family."""
 
     return {
         "sealed": sealed_simulation_schema(),
         "vented": vented_simulation_schema(),
+        "hybrid": hybrid_simulation_schema(),
     }
 
 

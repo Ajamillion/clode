@@ -50,6 +50,7 @@
 - FastAPI app that:
   - Exposes REST endpoints for job submission, driver queries, schema catalogs, and aggregation (`/opt/runs`, `/opt/stats`, `/schemas/solvers`).
   - Returns alignment summaries (Fc/Qtc, Fb, -3 dB edges, velocity peaks) alongside solver traces.
+  - Streams hybrid solver responses via `/simulate/hybrid`, returning multi-plane pressure slices with per-plane maxima/means for Studio overlays.
   - Offers Monte Carlo tolerance endpoints to summarise manufacturing risk (excursion, port velocity) directly from the gateway.
   - Provides measurement preview + comparison endpoints that parse Klippel `.dat` / REW `.mdat` uploads and report SPL/impedance deltas against solver predictions, returning both heuristic diagnoses and calibration posteriors.
   - Hosts WebSocket streams for live optimization telemetry (iterations, constraint hits, topology swaps).

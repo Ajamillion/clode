@@ -27,6 +27,7 @@ class SchemaExportScriptTests(unittest.TestCase):
             catalog = json.loads(catalog_path.read_text())
             self.assertIn("sealed", catalog)
             self.assertIn("vented", catalog)
+            self.assertIn("hybrid", catalog)
 
             sealed_request = output_dir / "sealed-request.schema.json"
             self.assertTrue(sealed_request.exists())
@@ -37,6 +38,11 @@ class SchemaExportScriptTests(unittest.TestCase):
             self.assertTrue(vented_response.exists())
             response_schema = json.loads(vented_response.read_text())
             self.assertEqual(response_schema["title"], "VentedBoxSimulationResponse")
+
+            hybrid_response = output_dir / "hybrid-response.schema.json"
+            self.assertTrue(hybrid_response.exists())
+            hybrid_schema = json.loads(hybrid_response.read_text())
+            self.assertEqual(hybrid_schema["title"], "HybridBoxSimulationResponse")
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -25,6 +25,8 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
 - ✅ Hybrid solver prototype that blends the lumped models with interior pressure field
   previews, port compression metrics, and Mach tracking
+- ✅ Hybrid simulation endpoint (`/simulate/hybrid`) returning multi-plane pressure
+  snapshots with JSON Schemas for typed client integration
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites

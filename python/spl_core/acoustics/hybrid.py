@@ -15,6 +15,7 @@ import cmath
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from math import exp, log10, pi, sqrt
+from typing import Any
 
 from ..drivers import (
     AIR_DENSITY,
@@ -32,6 +33,8 @@ class HybridFieldSnapshot:
     """Snapshot of the interior pressure field at a single frequency.
 
     All pressure magnitudes are stored as RMS values expressed in Pascals.
+    Additional metadata describes which plane of the enclosure the raster
+    represents so clients can map the slice back into 3D space.
     """
 
     frequency_hz: float
@@ -42,6 +45,9 @@ class HybridFieldSnapshot:
     port_velocity_ms: float | None
     port_compression_ratio: float | None
     port_mach: float | None
+    plane_label: str
+    plane_normal: tuple[float, float, float]
+    plane_offset_m: float
 
     def pressure_at(self, x_index: int, y_index: int) -> float:
         """Return the pressure value at the requested grid coordinate."""
@@ -55,6 +61,24 @@ class HybridFieldSnapshot:
         offset = y_index * self.grid_resolution + x_index
         return self.pressure_rms_pa[offset]
 
+    def to_dict(self, *, include_pressure: bool = True) -> dict[str, Any]:
+        """Serialise the snapshot into a JSON-friendly mapping."""
+
+        data: dict[str, Any] = {
+            "frequency_hz": self.frequency_hz,
+            "grid_resolution": self.grid_resolution,
+            "max_pressure_pa": self.max_pressure_pa,
+            "cone_velocity_ms": self.cone_velocity_ms,
+            "port_velocity_ms": self.port_velocity_ms,
+            "port_compression_ratio": self.port_compression_ratio,
+            "port_mach": self.port_mach,
+            "plane_label": self.plane_label,
+            "plane_normal": list(self.plane_normal),
+            "plane_offset_m": self.plane_offset_m,
+        }
+        data["pressure_rms_pa"] = list(self.pressure_rms_pa) if include_pressure else []
+        return data
+
 
 @dataclass(slots=True)
 class HybridSolverResult:
@@ -67,10 +91,19 @@ class HybridSolverResult:
     port_velocity_ms: list[float]
     field_snapshots: list[HybridFieldSnapshot]
 
-    def to_dict(self) -> dict[str, Sequence[float]]:
-        """Return a JSON-friendly view of the numeric traces."""
+    def to_dict(self, *, include_snapshots: bool = False) -> dict[str, Any]:
+        """Return a JSON-friendly view of the numeric traces.
 
-        return {
+        Parameters
+        ----------
+        include_snapshots:
+            When true the serialised payload includes the raw pressure rasters.
+            This can be sizeable for higher grid resolutions but is convenient
+            for APIs that wish to stream the data without additional
+            post-processing.
+        """
+
+        payload: dict[str, Any] = {
             "frequency_hz": list(self.frequency_hz),
             "spl_db": list(self.spl_db),
             "impedance_real": [float(z.real) for z in self.impedance_ohm],
@@ -78,6 +111,11 @@ class HybridSolverResult:
             "cone_velocity_ms": list(self.cone_velocity_ms),
             "port_velocity_ms": list(self.port_velocity_ms),
         }
+        if include_snapshots:
+            payload["field_snapshots"] = [
+                snapshot.to_dict(include_pressure=True) for snapshot in self.field_snapshots
+            ]
+        return payload
 
 
 @dataclass(slots=True)
@@ -88,13 +126,17 @@ class HybridSolverSummary:
     mean_internal_pressure_pa: float
     max_port_velocity_ms: float | None
     max_port_mach: float | None
+    plane_max_pressure_pa: dict[str, float]
+    plane_mean_pressure_pa: dict[str, float]
 
-    def to_dict(self) -> dict[str, float | None]:
+    def to_dict(self) -> dict[str, float | dict[str, float] | None]:
         return {
             "max_internal_pressure_pa": self.max_internal_pressure_pa,
             "mean_internal_pressure_pa": self.mean_internal_pressure_pa,
             "max_port_velocity_ms": self.max_port_velocity_ms,
             "max_port_mach": self.max_port_mach,
+            "plane_max_pressure_pa": dict(self.plane_max_pressure_pa),
+            "plane_mean_pressure_pa": dict(self.plane_mean_pressure_pa),
         }
 
 
@@ -104,6 +146,26 @@ class _AcousticSource:
     volume_velocity: complex
     direction: tuple[float, float, float]
     cardioid: float
+
+
+@dataclass(slots=True)
+class _FieldPlane:
+    """Description of a planar slice through the enclosure."""
+
+    label: str
+    axis: str
+    offset: float
+
+    def normal(self) -> tuple[float, float, float]:
+        axis = self.axis.lower()
+        if axis == "x":
+            return (1.0, 0.0, 0.0)
+        if axis == "y":
+            return (0.0, 1.0, 0.0)
+        if axis == "z":
+            return (0.0, 0.0, 1.0)
+        msg = f"Unsupported plane axis '{self.axis}'"
+        raise ValueError(msg)
 
 
 class HybridBoxSolver:
@@ -135,7 +197,10 @@ class HybridBoxSolver:
             0.6 * self._side_length,
             0.08 * self._side_length,
         )
-        self._grid_points = self._build_grid_points()
+        self._plane_specs = self._build_plane_specs()
+        self._plane_points = {
+            spec.label: self._build_grid_points(spec) for spec in self._plane_specs
+        }
         self._port_threshold = 17.0  # m/s threshold where compression becomes noticeable
 
         self._cms = driver.compliance()
@@ -202,6 +267,9 @@ class HybridBoxSolver:
         max_pressure_rms = 0.0
         max_port_velocity = 0.0
         max_port_mach = 0.0
+        plane_totals = {spec.label: 0.0 for spec in self._plane_specs}
+        plane_counts = {spec.label: 0 for spec in self._plane_specs}
+        plane_maxima = {spec.label: 0.0 for spec in self._plane_specs}
 
         for freq in frequencies_hz:
             if freq <= 0:
@@ -229,21 +297,39 @@ class HybridBoxSolver:
                     compression,
                 ) = self._vented_state(omega)
 
-            field = self._compute_pressure_field(omega, k, volume_velocity, port_vol_velocity)
-            max_field_pressure = max(field, default=0.0)
-
-            snapshots.append(
-                HybridFieldSnapshot(
-                    frequency_hz=freq,
-                    grid_resolution=self._grid_resolution,
-                    pressure_rms_pa=field,
-                    max_pressure_pa=max_field_pressure,
-                    cone_velocity_ms=abs(cone_vel),
-                    port_velocity_ms=port_vel,
-                    port_compression_ratio=compression,
-                    port_mach=(port_vel / SPEED_OF_SOUND) if port_vel is not None else None,
+            for spec in self._plane_specs:
+                points = self._plane_points[spec.label]
+                field = self._compute_pressure_field(
+                    omega,
+                    k,
+                    volume_velocity,
+                    port_vol_velocity,
+                    points,
                 )
-            )
+                plane_total = sum(field)
+                plane_totals[spec.label] += plane_total
+                plane_counts[spec.label] += len(field)
+                peak = max(field, default=0.0)
+                plane_maxima[spec.label] = max(plane_maxima[spec.label], peak)
+                total_pressure_rms += plane_total
+                total_cells += len(field)
+                max_pressure_rms = max(max_pressure_rms, peak)
+
+                snapshots.append(
+                    HybridFieldSnapshot(
+                        frequency_hz=freq,
+                        grid_resolution=self._grid_resolution,
+                        pressure_rms_pa=field,
+                        max_pressure_pa=peak,
+                        cone_velocity_ms=abs(cone_vel),
+                        port_velocity_ms=port_vel,
+                        port_compression_ratio=compression,
+                        port_mach=(port_vel / SPEED_OF_SOUND) if port_vel is not None else None,
+                        plane_label=spec.label,
+                        plane_normal=spec.normal(),
+                        plane_offset_m=self._clamp_offset(spec.offset),
+                    )
+                )
 
             pressure = omega * AIR_DENSITY * abs(volume_velocity) / (2 * pi * mic_distance_m)
             spl = 20.0 * log10(max(pressure / P_REF, 1e-12))
@@ -253,20 +339,22 @@ class HybridBoxSolver:
             impedance.append(ze)
             cone_velocity.append(abs(cone_vel))
             port_velocity.append(port_vel or 0.0)
-
-            total_pressure_rms += sum(field)
-            total_cells += len(field)
-            max_pressure_rms = max(max_pressure_rms, max_field_pressure)
             if port_vel is not None:
                 max_port_velocity = max(max_port_velocity, port_vel)
                 max_port_mach = max(max_port_mach, port_vel / SPEED_OF_SOUND)
 
         mean_pressure = total_pressure_rms / total_cells if total_cells else 0.0
+        plane_means = {
+            label: (plane_totals[label] / plane_counts[label]) if plane_counts[label] else 0.0
+            for label in plane_totals
+        }
         summary = HybridSolverSummary(
             max_internal_pressure_pa=max_pressure_rms,
             mean_internal_pressure_pa=mean_pressure,
             max_port_velocity_ms=max_port_velocity if self._mode == "vented" else None,
             max_port_mach=max_port_mach if self._mode == "vented" else None,
+            plane_max_pressure_pa=plane_maxima,
+            plane_mean_pressure_pa=plane_means,
         )
 
         result = HybridSolverResult(
@@ -343,15 +431,50 @@ class HybridBoxSolver:
         ratio = compressed / velocity if velocity > 0 else 1.0
         return compressed, ratio
 
-    def _build_grid_points(self) -> list[tuple[float, float, float]]:
+    def _build_plane_specs(self) -> list[_FieldPlane]:
+        specs: list[_FieldPlane] = []
+        mid_plane = _FieldPlane("mid-plane", "z", self._field_plane_z)
+        specs.append(mid_plane)
+
+        driver_plane_offset = self._clamp_offset(self._driver_position[2])
+        if abs(driver_plane_offset - mid_plane.offset) > (0.02 * self._side_length):
+            specs.append(_FieldPlane("driver-plane", "z", driver_plane_offset))
+
+        if self._mode == "vented" and self._port_position is not None:
+            port_offset = self._clamp_offset(self._port_position[1])
+            specs.append(_FieldPlane("port-plane", "y", port_offset))
+
+        return specs
+
+    def _build_grid_points(self, spec: _FieldPlane) -> list[tuple[float, float, float]]:
         step = self._side_length / max(self._grid_resolution - 1, 1)
+        axis = spec.axis.lower()
+        axis_map = {"x": ("y", "z"), "y": ("x", "z"), "z": ("x", "y")}
+        vary_axes = axis_map.get(axis)
+        if vary_axes is None:
+            msg = f"Unsupported plane axis '{spec.axis}'"
+            raise ValueError(msg)
+
+        index_map = {"x": 0, "y": 1, "z": 2}
+        fixed_index = index_map[axis]
+        first_index = index_map[vary_axes[0]]
+        second_index = index_map[vary_axes[1]]
+        offset = self._clamp_offset(spec.offset)
+
         points: list[tuple[float, float, float]] = []
         for j in range(self._grid_resolution):
-            y = j * step
+            second_val = j * step
             for i in range(self._grid_resolution):
-                x = i * step
-                points.append((x, y, self._field_plane_z))
+                first_val = i * step
+                coords = [0.0, 0.0, 0.0]
+                coords[fixed_index] = offset
+                coords[first_index] = first_val
+                coords[second_index] = second_val
+                points.append((coords[0], coords[1], coords[2]))
         return points
+
+    def _clamp_offset(self, value: float) -> float:
+        return max(0.0, min(value, self._side_length))
 
     def _compute_pressure_field(
         self,
@@ -359,6 +482,7 @@ class HybridBoxSolver:
         k: float,
         volume_velocity: complex,
         port_volume_velocity: complex | None,
+        sample_points: Sequence[tuple[float, float, float]],
     ) -> list[float]:
         driver_source = _AcousticSource(
             position=self._driver_position,
@@ -377,7 +501,7 @@ class HybridBoxSolver:
 
         sqrt_two = sqrt(2.0)
         field: list[float] = []
-        for x, y, z in self._grid_points:
+        for x, y, z in sample_points:
             pressure = self._source_pressure(driver_source, x, y, z, omega, k)
             if port_source is not None:
                 pressure += self._source_pressure(port_source, x, y, z, omega, k)

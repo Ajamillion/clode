@@ -38,6 +38,9 @@ from .measurements import (
 )
 from .serialization import (
     dataclass_schema,
+    hybrid_simulation_request_schema,
+    hybrid_simulation_response_schema,
+    hybrid_simulation_schema,
     sealed_simulation_request_schema,
     sealed_simulation_response_schema,
     sealed_simulation_schema,
@@ -72,6 +75,9 @@ __all__ = [
     "HybridSolverSummary",
     "HybridFieldSnapshot",
     "dataclass_schema",
+    "hybrid_simulation_request_schema",
+    "hybrid_simulation_response_schema",
+    "hybrid_simulation_schema",
     "sealed_simulation_request_schema",
     "sealed_simulation_response_schema",
     "sealed_simulation_schema",
