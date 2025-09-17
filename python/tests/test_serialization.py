@@ -85,11 +85,18 @@ class SchemaExportTests(unittest.TestCase):
         self.assertIn("plane_metrics", schema["properties"])
         plane_metrics = schema["properties"]["plane_metrics"]
         self.assertEqual(plane_metrics["type"], "object")
+        metric_props = plane_metrics["additionalProperties"]["properties"]
+        self.assertIn("max_pressure_coords_m", metric_props)
+        coords_schema = metric_props["max_pressure_coords_m"]
+        self.assertEqual(coords_schema["minItems"], 3)
+        self.assertEqual(coords_schema["maxItems"], 3)
         self.assertIn("field_snapshots", schema["required"])
         snapshots = schema["properties"]["field_snapshots"]
         self.assertEqual(snapshots["type"], "array")
         summary = schema["properties"]["summary"]
         self.assertEqual(summary["type"], "object")
+        self.assertIn("max_pressure_location_m", summary["properties"])
+        self.assertIn("plane_max_pressure_location_m", summary["properties"])
 
     def test_solver_catalog_lists_both_solvers(self) -> None:
         catalog = solver_json_schemas()

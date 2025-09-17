@@ -41,6 +41,7 @@ class HybridFieldSnapshot:
     grid_resolution: int
     pressure_rms_pa: list[float]
     max_pressure_pa: float
+    max_pressure_coords_m: tuple[float, float, float]
     cone_velocity_ms: float
     port_velocity_ms: float | None
     port_compression_ratio: float | None
@@ -68,6 +69,7 @@ class HybridFieldSnapshot:
             "frequency_hz": self.frequency_hz,
             "grid_resolution": self.grid_resolution,
             "max_pressure_pa": self.max_pressure_pa,
+            "max_pressure_coords_m": list(self.max_pressure_coords_m),
             "cone_velocity_ms": self.cone_velocity_ms,
             "port_velocity_ms": self.port_velocity_ms,
             "port_compression_ratio": self.port_compression_ratio,
@@ -126,17 +128,30 @@ class HybridSolverSummary:
     mean_internal_pressure_pa: float
     max_port_velocity_ms: float | None
     max_port_mach: float | None
+    min_port_compression_ratio: float | None
+    max_pressure_location_m: tuple[float, float, float] | None
     plane_max_pressure_pa: dict[str, float]
     plane_mean_pressure_pa: dict[str, float]
+    plane_max_pressure_location_m: dict[str, tuple[float, float, float]]
 
-    def to_dict(self) -> dict[str, float | dict[str, float] | None]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "max_internal_pressure_pa": self.max_internal_pressure_pa,
             "mean_internal_pressure_pa": self.mean_internal_pressure_pa,
             "max_port_velocity_ms": self.max_port_velocity_ms,
             "max_port_mach": self.max_port_mach,
+            "min_port_compression_ratio": self.min_port_compression_ratio,
+            "max_pressure_location_m": (
+                list(self.max_pressure_location_m)
+                if self.max_pressure_location_m is not None
+                else None
+            ),
             "plane_max_pressure_pa": dict(self.plane_max_pressure_pa),
             "plane_mean_pressure_pa": dict(self.plane_mean_pressure_pa),
+            "plane_max_pressure_location_m": {
+                label: list(coords)
+                for label, coords in self.plane_max_pressure_location_m.items()
+            },
         }
 
 
@@ -265,11 +280,14 @@ class HybridBoxSolver:
         total_pressure_rms = 0.0
         total_cells = 0
         max_pressure_rms = 0.0
+        max_pressure_coords: tuple[float, float, float] | None = None
         max_port_velocity = 0.0
         max_port_mach = 0.0
+        min_port_compression = None
         plane_totals = {spec.label: 0.0 for spec in self._plane_specs}
         plane_counts = {spec.label: 0 for spec in self._plane_specs}
         plane_maxima = {spec.label: 0.0 for spec in self._plane_specs}
+        plane_max_coords: dict[str, tuple[float, float, float]] = {}
 
         for freq in frequencies_hz:
             if freq <= 0:
@@ -309,11 +327,21 @@ class HybridBoxSolver:
                 plane_total = sum(field)
                 plane_totals[spec.label] += plane_total
                 plane_counts[spec.label] += len(field)
-                peak = max(field, default=0.0)
-                plane_maxima[spec.label] = max(plane_maxima[spec.label], peak)
+                if field:
+                    peak_index = max(range(len(field)), key=field.__getitem__)
+                    peak = field[peak_index]
+                    peak_coords = points[peak_index]
+                else:
+                    peak = 0.0
+                    peak_coords = (0.0, 0.0, 0.0)
+                if peak >= plane_maxima[spec.label]:
+                    plane_maxima[spec.label] = peak
+                    plane_max_coords[spec.label] = peak_coords
                 total_pressure_rms += plane_total
                 total_cells += len(field)
-                max_pressure_rms = max(max_pressure_rms, peak)
+                if peak > max_pressure_rms:
+                    max_pressure_rms = peak
+                    max_pressure_coords = peak_coords
 
                 snapshots.append(
                     HybridFieldSnapshot(
@@ -321,6 +349,7 @@ class HybridBoxSolver:
                         grid_resolution=self._grid_resolution,
                         pressure_rms_pa=field,
                         max_pressure_pa=peak,
+                        max_pressure_coords_m=peak_coords,
                         cone_velocity_ms=abs(cone_vel),
                         port_velocity_ms=port_vel,
                         port_compression_ratio=compression,
@@ -342,19 +371,31 @@ class HybridBoxSolver:
             if port_vel is not None:
                 max_port_velocity = max(max_port_velocity, port_vel)
                 max_port_mach = max(max_port_mach, port_vel / SPEED_OF_SOUND)
+            if compression is not None:
+                if min_port_compression is None or compression < min_port_compression:
+                    min_port_compression = compression
 
         mean_pressure = total_pressure_rms / total_cells if total_cells else 0.0
         plane_means = {
             label: (plane_totals[label] / plane_counts[label]) if plane_counts[label] else 0.0
             for label in plane_totals
         }
+        plane_locations = {
+            label: plane_max_coords.get(label, (0.0, 0.0, 0.0))
+            for label in plane_maxima
+        }
         summary = HybridSolverSummary(
             max_internal_pressure_pa=max_pressure_rms,
             mean_internal_pressure_pa=mean_pressure,
             max_port_velocity_ms=max_port_velocity if self._mode == "vented" else None,
             max_port_mach=max_port_mach if self._mode == "vented" else None,
+            min_port_compression_ratio=(
+                min_port_compression if self._mode == "vented" else None
+            ),
+            max_pressure_location_m=max_pressure_coords,
             plane_max_pressure_pa=plane_maxima,
             plane_mean_pressure_pa=plane_means,
+            plane_max_pressure_location_m=plane_locations,
         )
 
         result = HybridSolverResult(

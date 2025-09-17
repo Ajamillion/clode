@@ -41,16 +41,29 @@ def test_hybrid_solver_pressure_hotspot_near_driver() -> None:
     centre_index = driver_snapshot.grid_resolution // 2
     centre_pressure = driver_snapshot.pressure_at(centre_index, centre_index)
     corner_pressure = driver_snapshot.pressure_at(0, 0)
+    coords = driver_snapshot.max_pressure_coords_m
+    side_length = box.volume_m3() ** (1.0 / 3.0)
 
     assert centre_pressure > corner_pressure
     assert driver_snapshot.port_velocity_ms is None
     assert driver_snapshot.plane_label == "driver-plane"
     assert driver_snapshot.plane_normal == (0.0, 0.0, 1.0)
+    assert len(coords) == 3
+    assert all(0.0 <= c <= side_length + 1e-6 for c in coords)
+    assert isclose(coords[2], driver_snapshot.plane_offset_m, abs_tol=1e-6)
     assert summary.max_port_velocity_ms is None
     assert summary.max_internal_pressure_pa >= centre_pressure
     assert summary.mean_internal_pressure_pa > 0.0
     assert summary.plane_max_pressure_pa[driver_snapshot.plane_label] >= centre_pressure
     assert summary.plane_mean_pressure_pa[driver_snapshot.plane_label] > 0.0
+    assert summary.max_pressure_location_m is not None
+    plane_coords = summary.plane_max_pressure_location_m[driver_snapshot.plane_label]
+    for a, b in zip(plane_coords, coords, strict=False):
+        assert isclose(a, b, abs_tol=1e-6)
+    summary_payload = summary.to_dict()
+    assert summary_payload["max_pressure_location_m"] is not None
+    assert len(summary_payload["max_pressure_location_m"]) == 3
+    assert driver_snapshot.plane_label in summary_payload["plane_max_pressure_location_m"]
 
 
 def test_hybrid_solver_reports_port_compression_metrics() -> None:
@@ -73,6 +86,13 @@ def test_hybrid_solver_reports_port_compression_metrics() -> None:
     assert summary.max_port_mach > 0.0
     assert summary.plane_max_pressure_pa[port_snapshot.plane_label] >= port_snapshot.max_pressure_pa
     assert port_snapshot.plane_normal == (0.0, 1.0, 0.0)
+    assert summary.min_port_compression_ratio is not None
+    assert 0.0 < summary.min_port_compression_ratio <= 1.0
+    assert isclose(
+        summary.plane_max_pressure_location_m[port_snapshot.plane_label][1],
+        port_snapshot.plane_offset_m,
+        abs_tol=1e-6,
+    )
 
     if port_snapshot.port_velocity_ms > 15.0:
         assert port_snapshot.port_compression_ratio < 1.0
@@ -112,6 +132,8 @@ def test_hybrid_snapshot_serialisation_includes_plane_metadata() -> None:
     snapshot_payload = payload_with_fields["field_snapshots"][0]
     assert "plane_label" in snapshot_payload
     assert "pressure_rms_pa" in snapshot_payload
+    assert "max_pressure_coords_m" in snapshot_payload
+    assert len(snapshot_payload["max_pressure_coords_m"]) == 3
     assert summary.plane_max_pressure_pa[snapshot_payload["plane_label"]] >= snapshot_payload[
         "max_pressure_pa"
     ]

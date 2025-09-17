@@ -27,6 +27,8 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   previews, port compression metrics, and Mach tracking
 - ✅ Hybrid simulation endpoint (`/simulate/hybrid`) returning multi-plane pressure
   snapshots with JSON Schemas for typed client integration
+- ✅ Hybrid solver hotspot mapping that reports per-plane pressure coordinates and
+  minimum port compression ratios for targeted damping and vent tuning analysis
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
 ## Prerequisites

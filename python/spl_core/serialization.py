@@ -272,17 +272,27 @@ def hybrid_simulation_response_schema() -> dict[str, Any]:
         },
         "plane_metrics": {
             "type": "object",
-            "additionalProperties": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "max_pressure_pa": {"type": "number"},
-                    "mean_pressure_pa": {"type": "number"},
+                "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "max_pressure_pa": {"type": "number"},
+                        "mean_pressure_pa": {"type": "number"},
+                        "max_pressure_coords_m": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 3,
+                            "maxItems": 3,
+                        },
+                    },
+                    "required": [
+                        "max_pressure_pa",
+                        "mean_pressure_pa",
+                        "max_pressure_coords_m",
+                    ],
                 },
-                "required": ["max_pressure_pa", "mean_pressure_pa"],
             },
-        },
-    }
+        }
 
     required = [
         "frequency_hz",

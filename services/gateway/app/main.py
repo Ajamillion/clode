@@ -626,6 +626,9 @@ if FastAPI is not None:  # pragma: no branch
                     label: {
                         "max_pressure_pa": summary.plane_max_pressure_pa[label],
                         "mean_pressure_pa": summary.plane_mean_pressure_pa[label],
+                        "max_pressure_coords_m": list(
+                            summary.plane_max_pressure_location_m.get(label, (0.0, 0.0, 0.0))
+                        ),
                     }
                     for label in summary.plane_max_pressure_pa
                 },

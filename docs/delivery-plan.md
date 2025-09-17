@@ -93,9 +93,9 @@ preserving the long-term vision.
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
 - **Milestone M2 – Optimisation Loop:** 100 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, Bayesian calibration helpers, CI automation, and the new schema catalog endpoints/CLI now provide an end-to-end optimisation timeline backed by the gateway.
-- **Milestone M3 – High-Fidelity Solvers:** ≈70 % complete. The hybrid solver now exports multi-plane interior pressure slices with per-plane statistics, exposes Mach-aware port telemetry, and is surfaced through a dedicated `/simulate/hybrid` gateway endpoint backed by JSON Schemas so typed clients can consume the richer data while the FEM/BEM adaptor matures.
-- **Overall programme:** ≈68 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.70 + 0) ÷ 4 milestones).
-- Latest iteration introduces the hybrid simulation API and schema catalog updates so Studio, the CLI, and downstream services can ingest the enhanced field snapshots without bespoke plumbing—moving the high-fidelity solver track substantially closer to completion.
+- **Milestone M3 – High-Fidelity Solvers:** ≈75 % complete. The hybrid solver now exports multi-plane interior pressure slices with per-plane statistics, records hotspot coordinates, reports minimum port compression ratios, and is surfaced through a dedicated `/simulate/hybrid` gateway endpoint backed by JSON Schemas so typed clients can consume the richer data while the FEM/BEM adaptor matures.
+- **Overall programme:** ≈69 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.75 + 0) ÷ 4 milestones).
+- Latest iteration introduces hotspot coordinate mapping and compression roll-off tracking in the hybrid simulation API alongside schema catalog updates so Studio, the CLI, and downstream services can ingest the enhanced field snapshots without bespoke plumbing—moving the high-fidelity solver track substantially closer to completion.
 
 ## 4. Completion Strategy
 
