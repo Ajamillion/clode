@@ -20,12 +20,14 @@ for candidate in (PROJECT_ROOT, PYTHON_ROOT):
 from spl_core import (  # noqa: E402 - path adjusted above
     DEFAULT_DRIVER,
     BoxDesign,
+    CalibrationParameter,
     MeasurementTrace,
     PortGeometry,
     SealedBoxSolver,
     VentedBoxDesign,
     VentedBoxSolver,
     compare_measurement_to_prediction,
+    derive_calibration_update,
     measurement_from_response,
     parse_klippel_dat,
     parse_rew_mdat,
@@ -96,6 +98,46 @@ def _format_percent(value: float | None) -> str:
     return f"{value * 100:+.1f}%"
 
 
+def _clamp_weight(weight: float) -> float:
+    if weight < 0.0:
+        return 0.0
+    if weight > 1.0:
+        return 1.0
+    return weight
+
+
+def _format_weight(weight: float) -> str:
+    return f"{_clamp_weight(weight) * 100:.0f}%"
+
+
+def _format_calibration_db(parameter: CalibrationParameter | None) -> str:
+    if parameter is None:
+        return "–"
+    base = _format_float(parameter.mean)
+    interval = parameter.credible_interval
+    weight = _format_weight(parameter.update_weight)
+    if interval:
+        lower, upper, _confidence = interval
+        return (
+            f"{base} (95%: {_format_float(lower)} → {_format_float(upper)}, weight {weight})"
+        )
+    return f"{base} (weight {weight})"
+
+
+def _format_calibration_scale(parameter: CalibrationParameter | None) -> str:
+    if parameter is None:
+        return "–"
+    base = _format_percent(parameter.mean - 1.0)
+    interval = parameter.credible_interval
+    weight = _format_weight(parameter.update_weight)
+    if interval:
+        lower, upper, _confidence = interval
+        return (
+            f"{base} (95%: {_format_percent(lower - 1.0)} → {_format_percent(upper - 1.0)}, weight {weight})"
+        )
+    return f"{base} (weight {weight})"
+
+
 def _write_json(path: pathlib.Path | None, payload: dict[str, object], pretty: bool) -> None:
     if path is None:
         return
@@ -138,6 +180,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         help="Write systematic error diagnosis to a JSON file",
     )
+    parser.add_argument(
+        "--calibration-output",
+        type=pathlib.Path,
+        help="Write Bayesian calibration posterior to a JSON file",
+    )
     return parser
 
 
@@ -175,16 +222,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         prediction,
         port_length_m=port_length_m,
     )
+    calibration = derive_calibration_update(diagnosis)
 
     _write_json(args.delta_output, delta.to_dict(), args.pretty)
     _write_json(args.stats_output, stats.to_dict(), args.pretty)
     _write_json(args.diagnosis_output, diagnosis.to_dict(), args.pretty)
+    _write_json(args.calibration_output, calibration.to_dict(), args.pretty)
 
     if args.json:
         payload = {
             "alignment": args.alignment,
             "stats": stats.to_dict(),
             "diagnosis": diagnosis.to_dict(),
+            "calibration": calibration.to_dict(),
         }
         print(json.dumps(payload, indent=2 if args.pretty else None))
     else:
@@ -222,6 +272,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Notes:")
             for note in diagnosis.notes:
                 print(f"  • {note}")
+        print(f"Posterior level trim: {_format_calibration_db(calibration.level_trim_db)}")
+        print(f"Posterior port scale: {_format_calibration_scale(calibration.port_length_scale)}")
+        print(f"Posterior leakage scale: {_format_calibration_scale(calibration.leakage_q_scale)}")
+        if calibration.notes:
+            print("Calibration notes:")
+            for note in calibration.notes:
+                print(f"  - {note}")
 
     return 0
 

@@ -28,6 +28,7 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             stats_path = pathlib.Path(tmpdir) / "stats.json"
             delta_path = pathlib.Path(tmpdir) / "delta.json"
             diagnosis_path = pathlib.Path(tmpdir) / "diagnosis.json"
+            calibration_path = pathlib.Path(tmpdir) / "calibration.json"
 
             completed = subprocess.run(
                 [
@@ -44,6 +45,8 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
                     str(delta_path),
                     "--diagnosis-output",
                     str(diagnosis_path),
+                    "--calibration-output",
+                    str(calibration_path),
                 ],
                 check=True,
                 capture_output=True,
@@ -57,6 +60,10 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertLess(stats["spl_rmse_db"], 1e-6)
             diagnosis = payload["diagnosis"]
             self.assertAlmostEqual(diagnosis["overall_bias_db"], 0.0, places=6)
+            calibration = payload["calibration"]
+            self.assertIn("level_trim_db", calibration)
+            self.assertIsInstance(calibration["level_trim_db"], dict)
+            self.assertAlmostEqual(calibration["level_trim_db"]["mean"], 0.0, places=6)
 
             stats_file = json.loads(stats_path.read_text(encoding="utf-8"))
             self.assertEqual(stats_file["sample_count"], len(frequencies))
@@ -69,6 +76,10 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             diagnosis_file = json.loads(diagnosis_path.read_text(encoding="utf-8"))
             self.assertIn("notes", diagnosis_file)
             self.assertIn("recommended_level_trim_db", diagnosis_file)
+
+            calibration_file = json.loads(calibration_path.read_text(encoding="utf-8"))
+            self.assertIn("level_trim_db", calibration_file)
+            self.assertEqual(calibration_file["port_length_scale"], None)
 
 
 if __name__ == "__main__":  # pragma: no cover

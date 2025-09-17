@@ -124,10 +124,36 @@ export type MeasurementDiagnosis = {
   notes?: string[]
 }
 
+export type MeasurementCalibrationInterval = {
+  lower: number
+  upper: number
+  confidence: number
+}
+
+export type MeasurementCalibrationParameter = {
+  mean: number
+  variance: number
+  stddev: number
+  prior_mean: number
+  prior_variance: number
+  observation?: number | null
+  observation_variance?: number | null
+  credible_interval?: MeasurementCalibrationInterval | null
+  update_weight: number
+}
+
+export type MeasurementCalibration = {
+  level_trim_db?: MeasurementCalibrationParameter | null
+  port_length_scale?: MeasurementCalibrationParameter | null
+  leakage_q_scale?: MeasurementCalibrationParameter | null
+  notes?: string[]
+}
+
 export type MeasurementComparison = {
   summary?: Record<string, number | null>
   prediction?: MeasurementTrace | null
   delta?: MeasurementDelta | null
   stats?: MeasurementStats | null
   diagnosis?: MeasurementDiagnosis | null
+  calibration?: MeasurementCalibration | null
 }

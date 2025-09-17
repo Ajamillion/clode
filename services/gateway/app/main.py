@@ -44,6 +44,7 @@ from spl_core import (
     VentedBoxDesign,
     VentedBoxSolver,
     compare_measurement_to_prediction,
+    derive_calibration_update,
     measurement_from_response,
     parse_klippel_dat,
     parse_rew_mdat,
@@ -453,12 +454,14 @@ if FastAPI is not None:  # pragma: no branch
             measurement,
             predicted,
         )
+        calibration = derive_calibration_update(diagnosis)
         return {
             "summary": summary.to_dict(),
             "prediction": predicted.to_dict(),
             "delta": delta.to_dict(),
             "stats": stats.to_dict(),
             "diagnosis": diagnosis.to_dict(),
+            "calibration": calibration.to_dict(),
         }
 
     @app.post("/measurements/vented/compare")
@@ -477,12 +480,14 @@ if FastAPI is not None:  # pragma: no branch
             predicted,
             port_length_m=payload.box.port.length_m,
         )
+        calibration = derive_calibration_update(diagnosis)
         return {
             "summary": summary.to_dict(),
             "prediction": predicted.to_dict(),
             "delta": delta.to_dict(),
             "stats": stats.to_dict(),
             "diagnosis": diagnosis.to_dict(),
+            "calibration": calibration.to_dict(),
         }
 
     @app.post("/simulate/sealed")

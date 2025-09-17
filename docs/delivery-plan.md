@@ -92,10 +92,10 @@ preserving the long-term vision.
 ## Progress Snapshot (Iteration 15)
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
-- **Milestone M2 – Optimisation Loop:** ~99 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, CI automation, and the new schema catalog endpoints/CLI now provide an end-to-end optimisation timeline backed by the gateway.
-- **Overall programme:** ≈53 % toward the v1.0 roadmap ((1.0 + 0.99 + 0.1 + 0) ÷ 4 milestones).
+- **Milestone M2 – Optimisation Loop:** 100 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, Bayesian calibration helpers, CI automation, and the new schema catalog endpoints/CLI now provide an end-to-end optimisation timeline backed by the gateway.
+- **Overall programme:** ≈54 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.1 + 0) ÷ 4 milestones).
 - Latest iteration centralised the default driver/vented alignment heuristics inside `spl_core` and introduced a measurement comparison CLI that mirrors the gateway endpoints, enabling quick field-to-solver validation without standing up the API service.
-- Measurement comparisons now emit heuristic diagnoses—level trims, low-band leakage hints, and port retune suggestions—so calibration loops can flag systematic errors before rerunning optimisation.
+- Measurement comparisons now emit heuristic diagnoses—level trims, low-band leakage hints, and port retune suggestions—so calibration loops can flag systematic errors before rerunning optimisation. The new calibration module folds those heuristics into Bayesian posteriors with 95 % credible intervals for level trims, port-length scaling, and leakage-Q adjustments, wiring directly into the CLI, gateway responses, and Studio panel.
 
 ## 4. Completion Strategy
 
@@ -107,6 +107,7 @@ preserving the long-term vision.
    - ✅ Add JSON schema export for solver inputs/outputs.
    - ✅ Introduce Monte Carlo tolerance sweeps for sealed and vented alignments with REST reporting.
    - ✅ Land measurement ingestion scaffolding (Klippel/REW parsers) feeding the tolerance and calibration loops.
+   - ✅ Convert measurement heuristics into Bayesian calibration posteriors surfaced through the CLI, gateway, and Studio.
 2. **Gateway Evolution**
    - ✅ Replace optional FastAPI shim with concrete app, including async task manager and SQLite persistence.
    - ✅ Define WebSocket protocol aligning with Studio’s optimisation HUD.

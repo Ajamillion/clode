@@ -10,6 +10,14 @@ from .acoustics.vented import (
     VentedBoxResponse,
     VentedBoxSolver,
 )
+from .calibration import (
+    DEFAULT_CALIBRATION_PRIOR,
+    CalibrationParameter,
+    CalibrationPrior,
+    CalibrationUpdate,
+    ParameterPrior,
+    derive_calibration_update,
+)
 from .drivers import (
     DEFAULT_DRIVER,
     BoxDesign,
@@ -80,4 +88,10 @@ __all__ = [
     "parse_rew_mdat",
     "measurement_from_response",
     "compare_measurement_to_prediction",
+    "ParameterPrior",
+    "CalibrationParameter",
+    "CalibrationPrior",
+    "CalibrationUpdate",
+    "DEFAULT_CALIBRATION_PRIOR",
+    "derive_calibration_update",
 ]

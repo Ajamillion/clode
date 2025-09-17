@@ -1,5 +1,7 @@
 import type {
   MeasurementComparison,
+  MeasurementCalibration,
+  MeasurementCalibrationParameter,
   MeasurementDelta,
   MeasurementDiagnosis,
   MeasurementStats,
@@ -23,6 +25,7 @@ type ComparisonPayload = {
   delta?: MeasurementDelta | null
   stats?: MeasurementStats | null
   diagnosis?: MeasurementDiagnosis | null
+  calibration?: MeasurementCalibration | null
 }
 
 function asNumberArray(value: unknown): number[] | null {
@@ -188,6 +191,68 @@ export function normaliseMeasurementDiagnosis(raw: unknown): MeasurementDiagnosi
   return Object.keys(diagnosis).length ? diagnosis : null
 }
 
+function normaliseCalibrationParameter(raw: unknown): MeasurementCalibrationParameter | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const mean = Number(obj['mean'])
+  const variance = Number(obj['variance'])
+  if (!Number.isFinite(mean) || !Number.isFinite(variance)) return null
+  const stddevRaw = Number(obj['stddev'])
+  const stddev = Number.isFinite(stddevRaw) ? stddevRaw : Math.sqrt(Math.max(variance, 0))
+  const priorMean = Number(obj['prior_mean'])
+  const priorVariance = Number(obj['prior_variance'])
+  const updateWeightRaw = Number(obj['update_weight'])
+  const parameter: MeasurementCalibrationParameter = {
+    mean,
+    variance,
+    stddev,
+    prior_mean: Number.isFinite(priorMean) ? priorMean : 0,
+    prior_variance: Number.isFinite(priorVariance) ? priorVariance : 0,
+    update_weight: Number.isFinite(updateWeightRaw) ? Math.min(Math.max(updateWeightRaw, 0), 1) : 0,
+  }
+  const observation = obj['observation']
+  if (typeof observation === 'number' && Number.isFinite(observation)) {
+    parameter.observation = observation
+  }
+  const obsVar = obj['observation_variance']
+  if (typeof obsVar === 'number' && Number.isFinite(obsVar)) {
+    parameter.observation_variance = obsVar
+  }
+  const interval = obj['credible_interval']
+  if (interval && typeof interval === 'object') {
+    const info = interval as Record<string, unknown>
+    const lower = Number(info.lower)
+    const upper = Number(info.upper)
+    const confidence = Number(info.confidence)
+    if (Number.isFinite(lower) && Number.isFinite(upper) && Number.isFinite(confidence)) {
+      parameter.credible_interval = {
+        lower,
+        upper,
+        confidence,
+      }
+    }
+  }
+  return parameter
+}
+
+export function normaliseMeasurementCalibration(raw: unknown): MeasurementCalibration | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const calibration: MeasurementCalibration = {}
+  const level = normaliseCalibrationParameter(obj['level_trim_db'])
+  if (level) calibration.level_trim_db = level
+  const port = normaliseCalibrationParameter(obj['port_length_scale'])
+  if (port) calibration.port_length_scale = port
+  const leakage = normaliseCalibrationParameter(obj['leakage_q_scale'])
+  if (leakage) calibration.leakage_q_scale = leakage
+  const notes = obj['notes']
+  if (Array.isArray(notes)) {
+    const clean = notes.map((entry) => String(entry)).filter((entry) => entry.length > 0)
+    if (clean.length) calibration.notes = clean
+  }
+  return Object.keys(calibration).length ? calibration : null
+}
+
 export async function previewMeasurement(file: File): Promise<MeasurementTrace> {
   const form = new FormData()
   form.append('file', file)
@@ -303,5 +368,6 @@ export async function fetchMeasurementComparison(
   comparison.delta = normaliseMeasurementDelta(data?.delta) ?? null
   comparison.stats = normaliseMeasurementStats(data?.stats) ?? null
   comparison.diagnosis = normaliseMeasurementDiagnosis(data?.diagnosis) ?? null
+  comparison.calibration = normaliseMeasurementCalibration(data?.calibration) ?? null
   return comparison
 }

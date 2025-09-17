@@ -1,7 +1,11 @@
 import { useMemo, useRef, type ChangeEventHandler } from 'react'
 import { useMeasurement } from '@stores/measurement.store'
 import { useOptimization } from '@stores/optimization.store'
-import type { MeasurementTrace, OptimizationRun } from '@types/index'
+import type {
+  MeasurementCalibrationParameter,
+  MeasurementTrace,
+  OptimizationRun,
+} from '@types/index'
 
 const SOURCE_LABEL: Record<string, string> = {
   synthetic: 'Synthetic preview',
@@ -35,6 +39,34 @@ function formatPercent(value: number | null | undefined) {
   const abs = Math.abs(percent)
   const precision = abs < 10 ? 1 : 0
   return `${sign}${abs.toFixed(precision)}%`
+}
+
+function formatWeight(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  const clamped = Math.min(Math.max(value, 0), 1)
+  return `${Math.round(clamped * 100)}%`
+}
+
+function formatCalibrationLevel(parameter: MeasurementCalibrationParameter | null | undefined) {
+  if (!parameter) return null
+  const base = formatDecibel(parameter.mean)
+  const weight = formatWeight(parameter.update_weight)
+  const interval = parameter.credible_interval
+  if (interval) {
+    return `${base} (95%: ${formatDecibel(interval.lower)} → ${formatDecibel(interval.upper)}, weight ${weight})`
+  }
+  return `${base} (weight ${weight})`
+}
+
+function formatCalibrationScale(parameter: MeasurementCalibrationParameter | null | undefined) {
+  if (!parameter) return null
+  const base = formatPercent(parameter.mean - 1)
+  const weight = formatWeight(parameter.update_weight)
+  const interval = parameter.credible_interval
+  if (interval) {
+    return `${base} (95%: ${formatPercent(interval.lower - 1)} → ${formatPercent(interval.upper - 1)}, weight ${weight})`
+  }
+  return `${base} (weight ${weight})`
 }
 
 function formatVoltage(value: number | null | undefined) {
@@ -159,6 +191,21 @@ export function MeasurementPanel() {
         })
       }
     }
+    const calibration = comparison?.calibration
+    if (calibration) {
+      const level = formatCalibrationLevel(calibration.level_trim_db ?? null)
+      if (level) {
+        entries.push({ label: 'Posterior level trim', value: level })
+      }
+      const port = formatCalibrationScale(calibration.port_length_scale ?? null)
+      if (port) {
+        entries.push({ label: 'Posterior port scale', value: port })
+      }
+      const leakage = formatCalibrationScale(calibration.leakage_q_scale ?? null)
+      if (leakage) {
+        entries.push({ label: 'Posterior leakage', value: leakage })
+      }
+    }
     return entries
   }, [comparison])
 
@@ -167,6 +214,17 @@ export function MeasurementPanel() {
     if (!notes) return []
     return notes.map((note) => String(note)).filter((note) => note.length > 0)
   }, [comparison])
+
+  const calibrationNotes = useMemo(() => {
+    const notes = comparison?.calibration?.notes
+    if (!notes) return []
+    return notes.map((note) => String(note)).filter((note) => note.length > 0)
+  }, [comparison])
+
+  const insightNotes = useMemo(() => {
+    if (!diagnosisNotes.length && !calibrationNotes.length) return []
+    return [...diagnosisNotes, ...calibrationNotes]
+  }, [diagnosisNotes, calibrationNotes])
 
   const canCompare = !!preview && run?.status === 'succeeded'
 
@@ -241,7 +299,7 @@ export function MeasurementPanel() {
                   <dd>{formatRelative(lastComparedAt)}</dd>
                 </div>
               </dl>
-              {(highlightEntries.length > 0 || diagnosisNotes.length > 0) && (
+              {(highlightEntries.length > 0 || insightNotes.length > 0) && (
                 <div className="measurement__highlights">
                   {highlightEntries.map((entry) => (
                     <div key={entry.label}>
@@ -249,12 +307,12 @@ export function MeasurementPanel() {
                       <dd>{entry.value}</dd>
                     </div>
                   ))}
-                  {diagnosisNotes.length > 0 && (
+                  {insightNotes.length > 0 && (
                     <div className="measurement__notes">
                       <dt>Insights</dt>
                       <dd>
                         <ul>
-                          {diagnosisNotes.map((note, idx) => (
+                          {insightNotes.map((note, idx) => (
                             <li key={`${idx}-${note}`}>{note}</li>
                           ))}
                         </ul>

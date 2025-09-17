@@ -20,6 +20,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Measurement ingestion scaffolding with Klippel/REW parsers and FastAPI comparison endpoints for SPL/impedance deltas
 - ✅ Studio measurement panel that previews uploads or synthesised traces and compares SPL/impedance deltas against solver predictions
 - ✅ Measurement diagnostics that suggest level trims, leakage adjustments, and port retunes from solver/field deltas
+- ✅ Measurement calibration helper that produces Bayesian posteriors for level trims, port scales, and leakage-Q corrections
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
@@ -76,7 +77,7 @@ Additional services (gateway, simulation core, CLI) will be added following the 
 
 ## Next Steps
 - Close out the multi-resolution optimisation ladder by wiring differential evolution search and adjoint refinement into the persisted run workflow.
-- Extend the measurement ingestion scaffolding into Bayesian calibration so the new comparison panel can close the solver feedback loop automatically.
+- Feed the new calibration posteriors back into solver parameter overrides so automated reruns can apply level/port/leakage corrections without manual tweaking.
 - Extend the FastAPI gateway with export/download and measurement upload endpoints, and surface the richer traces through Studio SPL/impedance charts.
 - Wire the tolerance artefacts into dashboards (e.g. Grafana panels or Studio overlays) so CI snapshots drive proactive manufacturing risk monitoring.
 
@@ -103,9 +104,9 @@ Use the new `compare_measurements.py` script to benchmark field measurements aga
 
 ```bash
 pnpm py:compare -- path/to/measurement.mdat --alignment vented --volume 62 --drive-voltage 2.83 \
-  --stats-output ./stats.json --delta-output ./delta.json --diagnosis-output ./diagnosis.json
+  --stats-output ./stats.json --delta-output ./delta.json --diagnosis-output ./diagnosis.json --calibration-output ./calibration.json
 ```
 
 The command prints a human-readable summary by default; pass `--json` for machine-readable output. Optional flags mirror the gateway defaults so Studio results and CLI analyses stay aligned.
 
-Diagnosis output highlights systematic biases: low/mid/high-band SPL offsets, suggested global level trims, tuning shifts with estimated port-length adjustments, leakage hints, and a note stack summarising the most actionable insights.
+Diagnosis output highlights systematic biases: low/mid/high-band SPL offsets, suggested global level trims, tuning shifts with estimated port-length adjustments, leakage hints, and a note stack summarising the most actionable insights. Calibration payloads provide Bayesian posteriors with 95 % credible intervals for the recommended level trims, port length scaling, and leakage-Q multipliers.
