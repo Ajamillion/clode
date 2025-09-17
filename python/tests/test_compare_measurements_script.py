@@ -29,6 +29,7 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             delta_path = pathlib.Path(tmpdir) / "delta.json"
             diagnosis_path = pathlib.Path(tmpdir) / "diagnosis.json"
             calibration_path = pathlib.Path(tmpdir) / "calibration.json"
+            overrides_path = pathlib.Path(tmpdir) / "overrides.json"
 
             completed = subprocess.run(
                 [
@@ -47,6 +48,8 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
                     str(diagnosis_path),
                     "--calibration-output",
                     str(calibration_path),
+                    "--overrides-output",
+                    str(overrides_path),
                 ],
                 check=True,
                 capture_output=True,
@@ -64,6 +67,9 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertIn("level_trim_db", calibration)
             self.assertIsInstance(calibration["level_trim_db"], dict)
             self.assertAlmostEqual(calibration["level_trim_db"]["mean"], 0.0, places=6)
+            overrides = payload["calibration_overrides"]
+            self.assertIn("drive_voltage_scale", overrides)
+            self.assertAlmostEqual(overrides["drive_voltage_scale"], 1.0, places=6)
 
             stats_file = json.loads(stats_path.read_text(encoding="utf-8"))
             self.assertEqual(stats_file["sample_count"], len(frequencies))
@@ -80,6 +86,10 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             calibration_file = json.loads(calibration_path.read_text(encoding="utf-8"))
             self.assertIn("level_trim_db", calibration_file)
             self.assertEqual(calibration_file["port_length_scale"], None)
+
+            overrides_file = json.loads(overrides_path.read_text(encoding="utf-8"))
+            self.assertIn("drive_voltage_v", overrides_file)
+            self.assertEqual(overrides_file["port_length_m"], None)
 
 
 if __name__ == "__main__":  # pragma: no cover

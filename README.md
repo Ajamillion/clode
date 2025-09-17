@@ -21,6 +21,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Studio measurement panel that previews uploads or synthesised traces and compares SPL/impedance deltas against solver predictions
 - ✅ Measurement diagnostics that suggest level trims, leakage adjustments, and port retunes from solver/field deltas
 - ✅ Measurement calibration helper that produces Bayesian posteriors for level trims, port scales, and leakage-Q corrections
+- ✅ Calibration overrides that translate Bayesian posteriors into drive, port, and leakage adjustments across CLI, API, and Studio
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
@@ -77,7 +78,7 @@ Additional services (gateway, simulation core, CLI) will be added following the 
 
 ## Next Steps
 - Close out the multi-resolution optimisation ladder by wiring differential evolution search and adjoint refinement into the persisted run workflow.
-- Feed the new calibration posteriors back into solver parameter overrides so automated reruns can apply level/port/leakage corrections without manual tweaking.
+- Automate reruns leveraging the calibration overrides so measurement comparisons can trigger corrected solver batches without manual tweaking.
 - Extend the FastAPI gateway with export/download and measurement upload endpoints, and surface the richer traces through Studio SPL/impedance charts.
 - Wire the tolerance artefacts into dashboards (e.g. Grafana panels or Studio overlays) so CI snapshots drive proactive manufacturing risk monitoring.
 

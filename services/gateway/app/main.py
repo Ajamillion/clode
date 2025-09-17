@@ -44,6 +44,7 @@ from spl_core import (
     VentedBoxDesign,
     VentedBoxSolver,
     compare_measurement_to_prediction,
+    derive_calibration_overrides,
     derive_calibration_update,
     measurement_from_response,
     parse_klippel_dat,
@@ -455,6 +456,11 @@ if FastAPI is not None:  # pragma: no branch
             predicted,
         )
         calibration = derive_calibration_update(diagnosis)
+        overrides = derive_calibration_overrides(
+            calibration,
+            drive_voltage_v=payload.drive_voltage,
+            leakage_q=payload.box.leakage_q,
+        )
         return {
             "summary": summary.to_dict(),
             "prediction": predicted.to_dict(),
@@ -462,6 +468,7 @@ if FastAPI is not None:  # pragma: no branch
             "stats": stats.to_dict(),
             "diagnosis": diagnosis.to_dict(),
             "calibration": calibration.to_dict(),
+            "calibration_overrides": overrides.to_dict(),
         }
 
     @app.post("/measurements/vented/compare")
@@ -481,6 +488,12 @@ if FastAPI is not None:  # pragma: no branch
             port_length_m=payload.box.port.length_m,
         )
         calibration = derive_calibration_update(diagnosis)
+        overrides = derive_calibration_overrides(
+            calibration,
+            drive_voltage_v=payload.drive_voltage,
+            port_length_m=payload.box.port.length_m,
+            leakage_q=payload.box.leakage_q,
+        )
         return {
             "summary": summary.to_dict(),
             "prediction": predicted.to_dict(),
@@ -488,6 +501,7 @@ if FastAPI is not None:  # pragma: no branch
             "stats": stats.to_dict(),
             "diagnosis": diagnosis.to_dict(),
             "calibration": calibration.to_dict(),
+            "calibration_overrides": overrides.to_dict(),
         }
 
     @app.post("/simulate/sealed")

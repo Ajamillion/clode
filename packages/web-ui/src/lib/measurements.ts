@@ -2,6 +2,7 @@ import type {
   MeasurementComparison,
   MeasurementCalibration,
   MeasurementCalibrationParameter,
+  MeasurementCalibrationOverrides,
   MeasurementDelta,
   MeasurementDiagnosis,
   MeasurementStats,
@@ -26,6 +27,7 @@ type ComparisonPayload = {
   stats?: MeasurementStats | null
   diagnosis?: MeasurementDiagnosis | null
   calibration?: MeasurementCalibration | null
+  calibration_overrides?: MeasurementCalibrationOverrides | null
 }
 
 function asNumberArray(value: unknown): number[] | null {
@@ -253,6 +255,32 @@ export function normaliseMeasurementCalibration(raw: unknown): MeasurementCalibr
   return Object.keys(calibration).length ? calibration : null
 }
 
+export function normaliseMeasurementOverrides(raw: unknown): MeasurementCalibrationOverrides | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const overrides: MeasurementCalibrationOverrides = {}
+  const keys: (keyof MeasurementCalibrationOverrides)[] = [
+    'drive_voltage_scale',
+    'drive_voltage_v',
+    'port_length_scale',
+    'port_length_m',
+    'leakage_q_scale',
+    'leakage_q',
+  ]
+  for (const key of keys) {
+    const value = obj[key]
+    if (value == null) {
+      overrides[key] = null
+      continue
+    }
+    const num = Number(value)
+    if (Number.isFinite(num)) {
+      overrides[key] = num
+    }
+  }
+  return Object.keys(overrides).length ? overrides : null
+}
+
 export async function previewMeasurement(file: File): Promise<MeasurementTrace> {
   const form = new FormData()
   form.append('file', file)
@@ -369,5 +397,6 @@ export async function fetchMeasurementComparison(
   comparison.stats = normaliseMeasurementStats(data?.stats) ?? null
   comparison.diagnosis = normaliseMeasurementDiagnosis(data?.diagnosis) ?? null
   comparison.calibration = normaliseMeasurementCalibration(data?.calibration) ?? null
+  comparison.calibration_overrides = normaliseMeasurementOverrides(data?.calibration_overrides) ?? null
   return comparison
 }

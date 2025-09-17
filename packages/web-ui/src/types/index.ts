@@ -149,6 +149,15 @@ export type MeasurementCalibration = {
   notes?: string[]
 }
 
+export type MeasurementCalibrationOverrides = {
+  drive_voltage_scale?: number | null
+  drive_voltage_v?: number | null
+  port_length_scale?: number | null
+  port_length_m?: number | null
+  leakage_q_scale?: number | null
+  leakage_q?: number | null
+}
+
 export type MeasurementComparison = {
   summary?: Record<string, number | null>
   prediction?: MeasurementTrace | null
@@ -156,4 +165,5 @@ export type MeasurementComparison = {
   stats?: MeasurementStats | null
   diagnosis?: MeasurementDiagnosis | null
   calibration?: MeasurementCalibration | null
+  calibration_overrides?: MeasurementCalibrationOverrides | null
 }

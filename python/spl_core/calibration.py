@@ -99,6 +99,28 @@ class CalibrationUpdate:
         }
 
 
+@dataclass(slots=True)
+class CalibrationOverrides:
+    """Concrete solver overrides derived from a calibration update."""
+
+    drive_voltage_scale: float | None
+    drive_voltage_v: float | None
+    port_length_scale: float | None
+    port_length_m: float | None
+    leakage_q_scale: float | None
+    leakage_q: float | None
+
+    def to_dict(self) -> dict[str, float | None]:
+        return {
+            "drive_voltage_scale": self.drive_voltage_scale,
+            "drive_voltage_v": self.drive_voltage_v,
+            "port_length_scale": self.port_length_scale,
+            "port_length_m": self.port_length_m,
+            "leakage_q_scale": self.leakage_q_scale,
+            "leakage_q": self.leakage_q,
+        }
+
+
 DEFAULT_CALIBRATION_PRIOR = CalibrationPrior.default()
 _LEVEL_OBS_VARIANCE = 0.75 ** 2
 _PORT_SCALE_OBS_VARIANCE = 0.08 ** 2
@@ -119,6 +141,41 @@ def derive_calibration_update(
 
     notes = list(_format_notes(("Level trim", level), ("Port scale", port), ("Leakage Q", leakage)))
     return CalibrationUpdate(level_trim_db=level, port_length_scale=port, leakage_q_scale=leakage, notes=notes)
+
+
+def derive_calibration_overrides(
+    calibration: CalibrationUpdate,
+    *,
+    drive_voltage_v: float | None = None,
+    port_length_m: float | None = None,
+    leakage_q: float | None = None,
+) -> CalibrationOverrides:
+    """Convert posterior calibration parameters into solver overrides.
+
+    The helper projects the Bayesian posteriors onto concrete solver inputs so automated
+    reruns can be seeded with the inferred corrections. Level trims are translated into a
+    multiplicative drive-voltage scale (positive dB trims decrease voltage, negative trims
+    increase it). Port length and leakage factors apply directly to the supplied baselines.
+    Missing priors simply propagate ``None`` so callers can selectively override values.
+    """
+
+    drive_scale = _drive_voltage_scale(calibration.level_trim_db)
+    drive_voltage = _scaled_value(drive_voltage_v, drive_scale)
+
+    port_scale = _positive_mean(calibration.port_length_scale)
+    port_length = _scaled_value(port_length_m, port_scale)
+
+    leakage_scale = _positive_mean(calibration.leakage_q_scale)
+    leakage_value = _scaled_value(leakage_q, leakage_scale)
+
+    return CalibrationOverrides(
+        drive_voltage_scale=drive_scale,
+        drive_voltage_v=drive_voltage,
+        port_length_scale=port_scale,
+        port_length_m=port_length,
+        leakage_q_scale=leakage_scale,
+        leakage_q=leakage_value,
+    )
 
 
 def _update_level_trim(
@@ -197,6 +254,32 @@ def _parameter(
         update_weight=update_weight if observation is not None else 0.0,
         credible_interval=credible_interval,
     )
+
+
+def _drive_voltage_scale(parameter: CalibrationParameter | None) -> float | None:
+    if parameter is None:
+        return None
+    scale = 10.0 ** (-(parameter.mean) / 20.0)
+    if not math.isfinite(scale) or scale <= 0:
+        return None
+    return scale
+
+
+def _positive_mean(parameter: CalibrationParameter | None) -> float | None:
+    if parameter is None:
+        return None
+    if not math.isfinite(parameter.mean) or parameter.mean <= 0:
+        return None
+    return parameter.mean
+
+
+def _scaled_value(base: float | None, scale: float | None) -> float | None:
+    if base is None or scale is None:
+        return None
+    if not math.isfinite(base) or base <= 0:
+        return None
+    value = base * scale
+    return value if math.isfinite(value) and value > 0 else None
 
 
 def _gaussian_update(

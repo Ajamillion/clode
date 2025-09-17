@@ -89,13 +89,13 @@ preserving the long-term vision.
 | **M3 – High-Fidelity Solvers** | Month 6 | FEM/BEM coupling prototype, nonlinear extensions, Monte Carlo tolerance engine, Playwright + pytest integration tests, Docker Compose deployment. |
 | **M4 – Platform Hardening** | Month 9 | Cloud orchestration, offline cache packaging, metamaterial/active modules behind feature flags, observability dashboards, documentation for v1.0 release. |
 
-## Progress Snapshot (Iteration 15)
+## Progress Snapshot (Iteration 16)
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
 - **Milestone M2 – Optimisation Loop:** 100 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, Bayesian calibration helpers, CI automation, and the new schema catalog endpoints/CLI now provide an end-to-end optimisation timeline backed by the gateway.
-- **Overall programme:** ≈54 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.1 + 0) ÷ 4 milestones).
+- **Overall programme:** ≈56 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.15 + 0) ÷ 4 milestones).
 - Latest iteration centralised the default driver/vented alignment heuristics inside `spl_core` and introduced a measurement comparison CLI that mirrors the gateway endpoints, enabling quick field-to-solver validation without standing up the API service.
-- Measurement comparisons now emit heuristic diagnoses—level trims, low-band leakage hints, and port retune suggestions—so calibration loops can flag systematic errors before rerunning optimisation. The new calibration module folds those heuristics into Bayesian posteriors with 95 % credible intervals for level trims, port-length scaling, and leakage-Q adjustments, wiring directly into the CLI, gateway responses, and Studio panel.
+- Measurement comparisons now emit heuristic diagnoses—level trims, low-band leakage hints, and port retune suggestions—so calibration loops can flag systematic errors before rerunning optimisation. The calibration module now feeds Bayesian posteriors back into solver overrides, surfacing calibrated drive/port/leakage recommendations through the CLI, gateway responses, and Studio panel.
 
 ## 4. Completion Strategy
 

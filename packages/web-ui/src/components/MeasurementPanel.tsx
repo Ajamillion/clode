@@ -47,6 +47,22 @@ function formatWeight(value: number | null | undefined) {
   return `${Math.round(clamped * 100)}%`
 }
 
+function formatScalar(value: number | null | undefined, digits = 2) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return value.toFixed(digits)
+}
+
+function formatScalePercent(scale: number | null | undefined) {
+  if (scale == null || !Number.isFinite(scale)) return '—'
+  return formatPercent(scale - 1)
+}
+
+function formatScaleDb(scale: number | null | undefined) {
+  if (scale == null || !Number.isFinite(scale) || scale <= 0) return '—'
+  const db = 20 * Math.log10(scale)
+  return formatDecibel(db)
+}
+
 function formatCalibrationLevel(parameter: MeasurementCalibrationParameter | null | undefined) {
   if (!parameter) return null
   const base = formatDecibel(parameter.mean)
@@ -204,6 +220,28 @@ export function MeasurementPanel() {
       const leakage = formatCalibrationScale(calibration.leakage_q_scale ?? null)
       if (leakage) {
         entries.push({ label: 'Posterior leakage', value: leakage })
+      }
+    }
+    const overrides = comparison?.calibration_overrides
+    if (overrides) {
+      const driveScale = overrides.drive_voltage_scale ?? null
+      if (driveScale != null || overrides.drive_voltage_v != null) {
+        entries.push({
+          label: 'Calibrated drive',
+          value: `${formatVoltage(overrides.drive_voltage_v ?? null)} (${formatScalePercent(driveScale)}, ${formatScaleDb(driveScale)})`,
+        })
+      }
+      if (overrides.port_length_m != null || overrides.port_length_scale != null) {
+        entries.push({
+          label: 'Calibrated port length',
+          value: `${formatLength(overrides.port_length_m ?? null)} (${formatScalePercent(overrides.port_length_scale ?? null)})`,
+        })
+      }
+      if (overrides.leakage_q != null || overrides.leakage_q_scale != null) {
+        entries.push({
+          label: 'Calibrated leakage Q',
+          value: `${formatScalar(overrides.leakage_q ?? null, 2)} (${formatScalePercent(overrides.leakage_q_scale ?? null)})`,
+        })
       }
     }
     return entries

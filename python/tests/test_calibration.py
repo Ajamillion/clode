@@ -4,7 +4,12 @@ import unittest
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
-from spl_core.calibration import CalibrationPrior, derive_calibration_update
+from spl_core.calibration import (
+    CalibrationOverrides,
+    CalibrationPrior,
+    derive_calibration_overrides,
+    derive_calibration_update,
+)
 from spl_core.measurements import MeasurementDiagnosis
 
 
@@ -115,6 +120,64 @@ class CalibrationUpdateTests(unittest.TestCase):
         self.assertIsNone(update.port_length_scale)
         self.assertIsNone(update.leakage_q_scale)
         self.assertEqual(update.notes, [])
+
+    def test_overrides_project_parameters(self) -> None:
+        diagnosis = MeasurementDiagnosis(
+            overall_bias_db=-1.2,
+            recommended_level_trim_db=1.2,
+            low_band_bias_db=None,
+            mid_band_bias_db=None,
+            high_band_bias_db=None,
+            tuning_shift_hz=None,
+            recommended_port_length_m=0.24,
+            recommended_port_length_scale=1.05,
+            leakage_hint="raise_q",
+            notes=[],
+        )
+        update = derive_calibration_update(diagnosis)
+        overrides = derive_calibration_overrides(
+            update,
+            drive_voltage_v=2.83,
+            port_length_m=0.23,
+            leakage_q=15.0,
+        )
+        self.assertIsInstance(overrides, CalibrationOverrides)
+        assert overrides.drive_voltage_scale is not None
+        expected_scale = 10 ** (-update.level_trim_db.mean / 20.0) if update.level_trim_db else None
+        if expected_scale is not None:
+            self.assertAlmostEqual(overrides.drive_voltage_scale, expected_scale, places=6)
+            assert overrides.drive_voltage_v is not None
+            self.assertAlmostEqual(overrides.drive_voltage_v, 2.83 * expected_scale, places=6)
+        assert overrides.port_length_scale is not None
+        self.assertAlmostEqual(overrides.port_length_scale, update.port_length_scale.mean, places=6)
+        assert overrides.port_length_m is not None
+        self.assertAlmostEqual(overrides.port_length_m, 0.23 * overrides.port_length_scale, places=6)
+        assert overrides.leakage_q_scale is not None
+        self.assertGreater(overrides.leakage_q_scale, 0)
+        assert overrides.leakage_q is not None
+        self.assertAlmostEqual(overrides.leakage_q, 15.0 * overrides.leakage_q_scale, places=6)
+
+    def test_overrides_skip_missing_values(self) -> None:
+        diagnosis = MeasurementDiagnosis(
+            overall_bias_db=None,
+            recommended_level_trim_db=None,
+            low_band_bias_db=None,
+            mid_band_bias_db=None,
+            high_band_bias_db=None,
+            tuning_shift_hz=None,
+            recommended_port_length_m=None,
+            recommended_port_length_scale=None,
+            leakage_hint=None,
+            notes=[],
+        )
+        update = derive_calibration_update(diagnosis)
+        overrides = derive_calibration_overrides(update, drive_voltage_v=-1.0)
+        self.assertIsNone(overrides.drive_voltage_scale)
+        self.assertIsNone(overrides.drive_voltage_v)
+        self.assertIsNone(overrides.port_length_scale)
+        self.assertIsNone(overrides.port_length_m)
+        self.assertIsNone(overrides.leakage_q_scale)
+        self.assertIsNone(overrides.leakage_q)
 
 
 if __name__ == "__main__":  # pragma: no cover

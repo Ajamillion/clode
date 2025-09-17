@@ -7,7 +7,7 @@ import json
 import math
 import pathlib
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 SCRIPT_PATH = pathlib.Path(__file__).resolve()
 PYTHON_ROOT = SCRIPT_PATH.parent.parent
@@ -27,6 +27,7 @@ from spl_core import (  # noqa: E402 - path adjusted above
     VentedBoxDesign,
     VentedBoxSolver,
     compare_measurement_to_prediction,
+    derive_calibration_overrides,
     derive_calibration_update,
     measurement_from_response,
     parse_klippel_dat,
@@ -98,6 +99,18 @@ def _format_percent(value: float | None) -> str:
     return f"{value * 100:+.1f}%"
 
 
+def _format_scale(scale: float | None) -> str:
+    if scale is None:
+        return "–"
+    return _format_percent(scale - 1.0)
+
+
+def _scale_to_db(scale: float | None) -> float | None:
+    if scale is None or scale <= 0:
+        return None
+    return 20.0 * math.log10(scale)
+
+
 def _clamp_weight(weight: float) -> float:
     if weight < 0.0:
         return 0.0
@@ -138,12 +151,17 @@ def _format_calibration_scale(parameter: CalibrationParameter | None) -> str:
     return f"{base} (weight {weight})"
 
 
-def _write_json(path: pathlib.Path | None, payload: dict[str, object], pretty: bool) -> None:
+def _write_json(
+    path: pathlib.Path | None,
+    payload: Mapping[str, object | None],
+    pretty: bool,
+) -> None:
     if path is None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = dict(payload)
     path.write_text(
-        json.dumps(payload, indent=2 if pretty else None, sort_keys=pretty),
+        json.dumps(data, indent=2 if pretty else None, sort_keys=pretty),
         encoding="utf-8",
     )
 
@@ -185,6 +203,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         help="Write Bayesian calibration posterior to a JSON file",
     )
+    parser.add_argument(
+        "--overrides-output",
+        type=pathlib.Path,
+        help="Write solver override recommendations derived from calibration to JSON",
+    )
     return parser
 
 
@@ -223,11 +246,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         port_length_m=port_length_m,
     )
     calibration = derive_calibration_update(diagnosis)
+    overrides = derive_calibration_overrides(
+        calibration,
+        drive_voltage_v=args.drive_voltage,
+        port_length_m=port_length_m,
+        leakage_q=solver.box.leakage_q,
+    )
 
     _write_json(args.delta_output, delta.to_dict(), args.pretty)
     _write_json(args.stats_output, stats.to_dict(), args.pretty)
     _write_json(args.diagnosis_output, diagnosis.to_dict(), args.pretty)
     _write_json(args.calibration_output, calibration.to_dict(), args.pretty)
+    _write_json(args.overrides_output, overrides.to_dict(), args.pretty)
 
     if args.json:
         payload = {
@@ -235,6 +265,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "stats": stats.to_dict(),
             "diagnosis": diagnosis.to_dict(),
             "calibration": calibration.to_dict(),
+            "calibration_overrides": overrides.to_dict(),
         }
         print(json.dumps(payload, indent=2 if args.pretty else None))
     else:
@@ -275,6 +306,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Posterior level trim: {_format_calibration_db(calibration.level_trim_db)}")
         print(f"Posterior port scale: {_format_calibration_scale(calibration.port_length_scale)}")
         print(f"Posterior leakage scale: {_format_calibration_scale(calibration.leakage_q_scale)}")
+        drive_scale = overrides.drive_voltage_scale
+        drive_db = _scale_to_db(drive_scale)
+        print(
+            "Calibrated drive voltage: "
+            f"{_format_float(overrides.drive_voltage_v)} V"
+            f" ({_format_scale(drive_scale)} / {_format_float(drive_db)} dB)"
+        )
+        print(
+            "Calibrated port length: "
+            f"{_format_float(overrides.port_length_m)} m"
+            f" ({_format_scale(overrides.port_length_scale)})"
+        )
+        print(
+            "Calibrated leakage Q: "
+            f"{_format_float(overrides.leakage_q)}"
+            f" ({_format_scale(overrides.leakage_q_scale)})"
+        )
         if calibration.notes:
             print("Calibration notes:")
             for note in calibration.notes:

@@ -12,10 +12,12 @@ from .acoustics.vented import (
 )
 from .calibration import (
     DEFAULT_CALIBRATION_PRIOR,
+    CalibrationOverrides,
     CalibrationParameter,
     CalibrationPrior,
     CalibrationUpdate,
     ParameterPrior,
+    derive_calibration_overrides,
     derive_calibration_update,
 )
 from .drivers import (
@@ -91,7 +93,9 @@ __all__ = [
     "ParameterPrior",
     "CalibrationParameter",
     "CalibrationPrior",
+    "CalibrationOverrides",
     "CalibrationUpdate",
     "DEFAULT_CALIBRATION_PRIOR",
+    "derive_calibration_overrides",
     "derive_calibration_update",
 ]
