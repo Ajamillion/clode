@@ -1,0 +1,22 @@
+{
+  "name": "bagger-spl",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "packages/web-ui",
+    "packages/dev-mocks"
+  ],
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint && pnpm run py:lint",
+    "typecheck": "pnpm -r typecheck && pnpm run py:typecheck",
+    "py:lint": "python -m ruff check python services",
+    "py:typecheck": "python -m mypy python services",
+    "py:test": "python -m unittest discover -s python/tests",
+    "py:tolerance": "python python/scripts/generate_tolerance_snapshots.py --output tolerance-snapshots",
+    "py:schemas": "python python/scripts/export_solver_schemas.py --output schema-exports --pretty",
+    "py:compare": "python python/scripts/compare_measurements.py",
+    "test:e2e": "pnpm --filter @motosub/web-ui test:e2e"
+  }
+}
