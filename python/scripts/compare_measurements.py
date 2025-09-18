@@ -411,6 +411,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"SPL RMSE: {_format_float(stats.spl_rmse_db)} dB")
         print(f"SPL MAE: {_format_float(stats.spl_mae_db)} dB")
         print(f"SPL bias: {_format_float(stats.spl_bias_db)} dB")
+        print(f"SPL std dev: {_format_float(stats.spl_std_dev_db)} dB")
         print(f"SPL correlation: {_format_float(stats.spl_pearson_r)}")
         print(f"SPL R²: {_format_float(stats.spl_r_squared)}")
         print(f"SPL P95 delta: {_format_float(stats.spl_p95_abs_error_db)} dB")
@@ -516,6 +517,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "SPL bias after calibration: "
                 f"{_format_float(calibrated_stats.spl_bias_db)} dB"
                 f" (was {_format_float(stats.spl_bias_db)} dB)"
+            )
+            print(
+                "SPL std dev after calibration: "
+                f"{_format_float(calibrated_stats.spl_std_dev_db)} dB"
+                f" (was {_format_float(stats.spl_std_dev_db)} dB)"
             )
             print(
                 "SPL correlation after calibration: "

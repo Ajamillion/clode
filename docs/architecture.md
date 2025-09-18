@@ -5,7 +5,7 @@
 - Prioritize maintainability and incremental delivery over speculative scope while preserving extensibility for advanced research features.
 - Ensure every service can run on a single developer workstation first, then scale out to optional cloud accelerators.
 
-_Progress snapshot:_ M1 and M2 remain complete, M3 now sits around 91 % after layering highest/lowest SPL delta tracking onto the existing correlation/MAE/R²/P95 metrics and wiring them through Studio + CLI summaries, keeping the overall roadmap near 73 % toward v1.0.
+_Progress snapshot:_ M1 and M2 remain complete, M3 now sits around 92 % after layering SPL delta standard deviation alongside the existing correlation/MAE/R²/P95/highest/lowest telemetry and wiring it through Studio + CLI summaries, keeping the overall roadmap near 73 % toward v1.0.
 
 ## 2. Guiding Design Principles
 1. **Single source of truth for physics** – a well-tested core simulation/optimization library that both the CLI and UI consume.
@@ -43,7 +43,7 @@ _Progress snapshot:_ M1 and M2 remain complete, M3 now sits around 91 % after 
   - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics) plus the new hybrid pressure-field prototype that previews FEM/BEM outputs (interior pressure slices, hotspot coordinate mapping, port compression heuristics, Mach tracking, configurable snapshot stride, suspension creep modelling, lightweight thermal network for coil/pole/basket heating and thermal compression telemetry, and aeroacoustic heuristics for vortex shedding loss + jet-noise SPL estimates referenced to the caller's microphone distance) without heavy numerical dependencies.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis (initial sealed/vented sweep landed) and reciprocity/thermal sanity checks.
-  - `measurements`: Klippel/REW ingestion, trace alignment, heuristic diagnosis (level trims, leakage hints, port retunes), and measurement-vs-simulation delta statistics exposed through both the FastAPI endpoints and a standalone CLI, now powering multi-metric overlays (SPL, phase, impedance magnitude, THD) with solver delta toggles, Pearson SPL correlation, SPL mean absolute error, SPL R² scoring, SPL 95th-percentile absolute error, highest/lowest signed SPL deltas, and CSV exports for measured/predicted/calibrated traces inside Studio.
+  - `measurements`: Klippel/REW ingestion, trace alignment, heuristic diagnosis (level trims, leakage hints, port retunes), and measurement-vs-simulation delta statistics exposed through both the FastAPI endpoints and a standalone CLI, now powering multi-metric overlays (SPL, phase, impedance magnitude, THD) with solver delta toggles, Pearson SPL correlation, SPL mean absolute error, SPL R² scoring, SPL delta standard deviation, SPL 95th-percentile absolute error, highest/lowest signed SPL deltas, and CSV exports for measured/predicted/calibrated traces inside Studio.
   - `calibration`: Bayesian updates that transform measurement diagnoses into posterior level trims, port-length scales, and leakage-Q multipliers with credible intervals for automated solver correction.
   - `serialization`: JSON schema exports for solver requests/responses used by gateway + clients.
 - **API Surface**: Plain Python classes exported through pydantic models; zero global state.

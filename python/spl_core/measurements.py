@@ -172,6 +172,7 @@ class MeasurementStats:
     spl_rmse_db: float | None
     spl_mae_db: float | None
     spl_bias_db: float | None
+    spl_std_dev_db: float | None
     spl_pearson_r: float | None
     spl_r_squared: float | None
     spl_p95_abs_error_db: float | None
@@ -187,6 +188,7 @@ class MeasurementStats:
             "spl_rmse_db": self.spl_rmse_db,
             "spl_mae_db": self.spl_mae_db,
             "spl_bias_db": self.spl_bias_db,
+            "spl_std_dev_db": self.spl_std_dev_db,
             "spl_pearson_r": self.spl_pearson_r,
             "spl_r_squared": self.spl_r_squared,
             "spl_p95_abs_error_db": self.spl_p95_abs_error_db,
@@ -375,6 +377,7 @@ def compare_measurement_to_prediction(
         spl_rmse_db=_rmse(spl_delta),
         spl_mae_db=_mae(spl_delta),
         spl_bias_db=_mean(spl_delta),
+        spl_std_dev_db=_stddev(spl_delta),
         spl_pearson_r=_pearson_correlation(
             measurement_for_stats.spl_db, prediction_for_stats.spl_db
         ),
@@ -549,6 +552,19 @@ def _mae(values: Sequence[float] | None) -> float | None:
     if not valid:
         return None
     return sum(valid) / len(valid)
+
+
+def _stddev(values: Sequence[float] | None) -> float | None:
+    if values is None:
+        return None
+    valid = [v for v in values if not math.isnan(v)]
+    if not valid:
+        return None
+    if len(valid) == 1:
+        return 0.0
+    mean = math.fsum(valid) / len(valid)
+    variance = math.fsum((value - mean) ** 2 for value in valid) / len(valid)
+    return math.sqrt(variance)
 
 
 def _pearson_correlation(

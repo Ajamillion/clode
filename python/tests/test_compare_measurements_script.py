@@ -82,6 +82,7 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertAlmostEqual(stats["spl_pearson_r"], 1.0, places=6)
             self.assertAlmostEqual(stats["spl_r_squared"], 1.0, places=6)
             self.assertLess(stats["spl_p95_abs_error_db"], 1e-6)
+            self.assertLess(stats["spl_std_dev_db"], 1e-6)
             self.assertLess(abs(stats["spl_highest_delta_db"]), 1e-6)
             self.assertLess(abs(stats["spl_lowest_delta_db"]), 1e-6)
             diagnosis = payload["diagnosis"]
@@ -104,6 +105,7 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertAlmostEqual(stats_file["spl_r_squared"], 1.0, places=6)
             self.assertLess(stats_file["spl_mae_db"], 1e-6)
             self.assertLess(stats_file["spl_p95_abs_error_db"], 1e-6)
+            self.assertLess(stats_file["spl_std_dev_db"], 1e-6)
             self.assertLess(abs(stats_file["spl_highest_delta_db"]), 1e-6)
             self.assertLess(abs(stats_file["spl_lowest_delta_db"]), 1e-6)
 
@@ -113,6 +115,7 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertAlmostEqual(calibrated_stats_file["spl_r_squared"], 1.0, places=6)
             self.assertLess(calibrated_stats_file["spl_mae_db"], 1e-6)
             self.assertLess(calibrated_stats_file["spl_p95_abs_error_db"], 1e-6)
+            self.assertLess(calibrated_stats_file["spl_std_dev_db"], 1e-6)
             self.assertLess(abs(calibrated_stats_file["spl_highest_delta_db"]), 1e-6)
             self.assertLess(abs(calibrated_stats_file["spl_lowest_delta_db"]), 1e-6)
 

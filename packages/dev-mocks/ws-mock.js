@@ -181,6 +181,13 @@ function computeMae(values) {
   return sum / values.length
 }
 
+function computeStdDev(values) {
+  if (!values || !values.length) return null
+  const mean = values.reduce((total, value) => total + value, 0) / values.length
+  const variance = values.reduce((total, value) => total + (value - mean) ** 2, 0) / values.length
+  return Math.sqrt(variance)
+}
+
 function computeMaxAbs(values) {
   if (!values || !values.length) return null
   let max = 0
@@ -234,6 +241,7 @@ function buildMeasurementStats(delta) {
     spl_rmse_db: computeRmse(delta.spl_delta_db),
     spl_mae_db: computeMae(delta.spl_delta_db),
     spl_bias_db: computeMean(delta.spl_delta_db),
+    spl_std_dev_db: computeStdDev(delta.spl_delta_db),
     spl_pearson_r: null,
     spl_r_squared: null,
     spl_p95_abs_error_db: computePercentileAbs(delta.spl_delta_db, 0.95),
