@@ -414,6 +414,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"SPL correlation: {_format_float(stats.spl_pearson_r)}")
         print(f"SPL R²: {_format_float(stats.spl_r_squared)}")
         print(f"SPL P95 delta: {_format_float(stats.spl_p95_abs_error_db)} dB")
+        print(f"Peak SPL delta: {_format_float(stats.spl_highest_delta_db)} dB")
+        print(f"Deepest SPL delta: {_format_float(stats.spl_lowest_delta_db)} dB")
         print(f"Max SPL delta: {_format_float(stats.max_spl_delta_db)} dB")
         print(f"Phase RMSE: {_format_float(stats.phase_rmse_deg)} °")
         print(f"Impedance RMSE: {_format_float(stats.impedance_mag_rmse_ohm)} Ω")
@@ -529,6 +531,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "SPL P95 delta after calibration: "
                 f"{_format_float(calibrated_stats.spl_p95_abs_error_db)} dB"
                 f" (was {_format_float(stats.spl_p95_abs_error_db)} dB)"
+            )
+            print(
+                "Peak SPL delta after calibration: "
+                f"{_format_float(calibrated_stats.spl_highest_delta_db)} dB"
+                f" (was {_format_float(stats.spl_highest_delta_db)} dB)"
+            )
+            print(
+                "Deepest SPL delta after calibration: "
+                f"{_format_float(calibrated_stats.spl_lowest_delta_db)} dB"
+                f" (was {_format_float(stats.spl_lowest_delta_db)} dB)"
             )
             print(
                 "Max SPL delta after calibration: "

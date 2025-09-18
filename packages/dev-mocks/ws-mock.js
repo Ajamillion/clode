@@ -191,6 +191,26 @@ function computeMaxAbs(values) {
   return max
 }
 
+function computeMax(values) {
+  if (!values || !values.length) return null
+  let result = null
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue
+    result = result == null ? value : Math.max(result, value)
+  }
+  return result
+}
+
+function computeMin(values) {
+  if (!values || !values.length) return null
+  let result = null
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue
+    result = result == null ? value : Math.min(result, value)
+  }
+  return result
+}
+
 function computePercentileAbs(values, percentile) {
   if (!values || !values.length) return null
   const sorted = values
@@ -217,6 +237,8 @@ function buildMeasurementStats(delta) {
     spl_pearson_r: null,
     spl_r_squared: null,
     spl_p95_abs_error_db: computePercentileAbs(delta.spl_delta_db, 0.95),
+    spl_highest_delta_db: computeMax(delta.spl_delta_db),
+    spl_lowest_delta_db: computeMin(delta.spl_delta_db),
     max_spl_delta_db: computeMaxAbs(delta.spl_delta_db),
     phase_rmse_deg: null,
     impedance_mag_rmse_ohm: computeRmse(delta.impedance_delta_ohm),

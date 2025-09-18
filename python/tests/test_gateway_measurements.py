@@ -67,6 +67,10 @@ class MeasurementComparisonPayloadTests(unittest.TestCase):
         self.assertIsInstance(p95, int | float | type(None))
         if isinstance(p95, int | float):
             self.assertGreaterEqual(p95, 0.0)
+        highest = stats.get("spl_highest_delta_db") if isinstance(stats, dict) else None
+        self.assertIsInstance(highest, int | float | type(None))
+        lowest = stats.get("spl_lowest_delta_db") if isinstance(stats, dict) else None
+        self.assertIsInstance(lowest, int | float | type(None))
         pearson = stats.get("spl_pearson_r") if isinstance(stats, dict) else None
         self.assertIsInstance(pearson, int | float)
         if isinstance(pearson, int | float):
@@ -84,6 +88,9 @@ class MeasurementComparisonPayloadTests(unittest.TestCase):
         rerun_p95 = rerun_stats.get("spl_p95_abs_error_db") if isinstance(rerun_stats, dict) else None
         if isinstance(p95, int | float) and isinstance(rerun_p95, int | float):
             self.assertLess(rerun_p95 + 1e-6, p95 + 1e-6)
+        rerun_highest = rerun_stats.get("spl_highest_delta_db") if isinstance(rerun_stats, dict) else None
+        if isinstance(highest, int | float) and isinstance(rerun_highest, int | float):
+            self.assertLessEqual(abs(rerun_highest), abs(highest) + 1e-6)
 
         spl_bias = stats.get("spl_bias_db")
         rerun_bias = rerun_stats.get("spl_bias_db") if isinstance(rerun_stats, dict) else None

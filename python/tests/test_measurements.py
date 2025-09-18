@@ -98,6 +98,8 @@ class MeasurementComparisonTests(unittest.TestCase):
         assert stats.spl_r_squared is not None
         self.assertAlmostEqual(stats.spl_r_squared, 1.0, places=6)
         self.assertEqual(stats.spl_p95_abs_error_db, 0.0)
+        self.assertEqual(stats.spl_highest_delta_db, 0.0)
+        self.assertEqual(stats.spl_lowest_delta_db, 0.0)
         self.assertEqual(stats.max_spl_delta_db, 0.0)
         self.assertIsNone(stats.phase_rmse_deg)
         self.assertIsNotNone(delta.spl_delta_db)
@@ -131,6 +133,10 @@ class MeasurementComparisonTests(unittest.TestCase):
         self.assertGreater(stats.spl_r_squared, 0.95)
         assert stats.spl_p95_abs_error_db is not None
         self.assertAlmostEqual(stats.spl_p95_abs_error_db, 0.8, places=2)
+        assert stats.spl_highest_delta_db is not None
+        self.assertAlmostEqual(stats.spl_highest_delta_db, 0.8, places=2)
+        assert stats.spl_lowest_delta_db is not None
+        self.assertAlmostEqual(stats.spl_lowest_delta_db, 0.8, places=2)
         assert stats.max_spl_delta_db is not None
         self.assertGreater(stats.max_spl_delta_db, 0.7)
         assert delta.spl_delta_db is not None

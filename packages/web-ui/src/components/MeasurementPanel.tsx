@@ -238,6 +238,10 @@ export function MeasurementPanel() {
       if (stats.spl_r_squared != null) entries.push({ label: 'SPL R²', value: formatRSquared(stats.spl_r_squared) })
       if (stats.spl_p95_abs_error_db != null)
         entries.push({ label: 'SPL P95 delta', value: formatDecibel(stats.spl_p95_abs_error_db) })
+      if (stats.spl_highest_delta_db != null)
+        entries.push({ label: 'Peak delta', value: formatDecibel(stats.spl_highest_delta_db) })
+      if (stats.spl_lowest_delta_db != null)
+        entries.push({ label: 'Deepest delta', value: formatDecibel(stats.spl_lowest_delta_db) })
       if (stats.max_spl_delta_db != null) entries.push({ label: 'Worst delta', value: formatDecibel(stats.max_spl_delta_db) })
       if (stats.phase_rmse_deg != null) entries.push({ label: 'Phase RMSE', value: `${stats.phase_rmse_deg.toFixed(2)}°` })
       if (stats.impedance_mag_rmse_ohm != null) entries.push({ label: 'Impedance RMSE', value: `${stats.impedance_mag_rmse_ohm.toFixed(2)} Ω` })
@@ -341,6 +345,12 @@ export function MeasurementPanel() {
         }
         if (calStats.spl_p95_abs_error_db != null) {
           entries.push({ label: 'Rerun SPL P95 delta', value: formatDecibel(calStats.spl_p95_abs_error_db) })
+        }
+        if (calStats.spl_highest_delta_db != null) {
+          entries.push({ label: 'Rerun peak delta', value: formatDecibel(calStats.spl_highest_delta_db) })
+        }
+        if (calStats.spl_lowest_delta_db != null) {
+          entries.push({ label: 'Rerun deepest delta', value: formatDecibel(calStats.spl_lowest_delta_db) })
         }
         if (calStats.max_spl_delta_db != null) {
           entries.push({ label: 'Rerun worst delta', value: formatDecibel(calStats.max_spl_delta_db) })

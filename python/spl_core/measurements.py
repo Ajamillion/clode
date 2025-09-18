@@ -175,6 +175,8 @@ class MeasurementStats:
     spl_pearson_r: float | None
     spl_r_squared: float | None
     spl_p95_abs_error_db: float | None
+    spl_highest_delta_db: float | None
+    spl_lowest_delta_db: float | None
     max_spl_delta_db: float | None
     phase_rmse_deg: float | None
     impedance_mag_rmse_ohm: float | None
@@ -188,6 +190,8 @@ class MeasurementStats:
             "spl_pearson_r": self.spl_pearson_r,
             "spl_r_squared": self.spl_r_squared,
             "spl_p95_abs_error_db": self.spl_p95_abs_error_db,
+            "spl_highest_delta_db": self.spl_highest_delta_db,
+            "spl_lowest_delta_db": self.spl_lowest_delta_db,
             "max_spl_delta_db": self.max_spl_delta_db,
             "phase_rmse_deg": self.phase_rmse_deg,
             "impedance_mag_rmse_ohm": self.impedance_mag_rmse_ohm,
@@ -378,6 +382,8 @@ def compare_measurement_to_prediction(
             measurement_for_stats.spl_db, prediction_for_stats.spl_db
         ),
         spl_p95_abs_error_db=_percentile_abs(spl_delta, 0.95),
+        spl_highest_delta_db=_max_value(spl_delta),
+        spl_lowest_delta_db=_min_value(spl_delta),
         max_spl_delta_db=_max_abs(spl_delta),
         phase_rmse_deg=_rmse(phase_delta),
         impedance_mag_rmse_ohm=_rmse(impedance_delta),
@@ -605,6 +611,30 @@ def _max_abs(values: Sequence[float] | None) -> float | None:
     if not valid:
         return None
     return max(valid)
+
+
+def _max_value(values: Sequence[float] | None) -> float | None:
+    if values is None:
+        return None
+    best: float | None = None
+    for value in values:
+        if math.isnan(value):
+            continue
+        if best is None or value > best:
+            best = value
+    return best
+
+
+def _min_value(values: Sequence[float] | None) -> float | None:
+    if values is None:
+        return None
+    best: float | None = None
+    for value in values:
+        if math.isnan(value):
+            continue
+        if best is None or value < best:
+            best = value
+    return best
 
 
 def _percentile_abs(values: Sequence[float] | None, percentile: float) -> float | None:

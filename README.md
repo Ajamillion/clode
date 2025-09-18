@@ -29,6 +29,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Measurement stats also surface SPL R² so reviewers see how much variance the prediction explains alongside correlation and bias
 - ✅ Measurement stats now include SPL mean absolute error so reviewers get an intuitive average-delta gauge alongside RMSE
 - ✅ Measurement stats expose the SPL 95th-percentile absolute error to spotlight worst-case deviations alongside average metrics
+- ✅ Measurement stats also report the highest and lowest SPL deltas so reviewers see the most positive and negative excursions alongside the absolute worst-case value
 - ✅ Measurement comparison exports capture measured/predicted traces, deltas, and calibrated reruns as CSV snapshots for downstream analysis
 - ✅ Measurement comparisons support fractional-octave smoothing across the CLI, gateway, and Studio controls so noisy traces can be tamed consistently
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
@@ -53,7 +54,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   panel and mock optimisation stack
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
-Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈90 %**, overall ≈73 % toward the v1.0 target.
+Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈91 %**, overall ≈73 % toward the v1.0 target.
 
 ## Prerequisites
 - Node.js 20+
@@ -170,7 +171,7 @@ pnpm py:compare -- path/to/measurement.mdat --alignment vented --volume 62 --dri
   --stats-output ./stats.json --delta-output ./delta.json --diagnosis-output ./diagnosis.json --calibration-output ./calibration.json
 ```
 
-The command prints a human-readable summary by default; pass `--json` for machine-readable output. Optional flags mirror the gateway defaults so Studio results and CLI analyses stay aligned, and the summary now calls out the SPL 95th-percentile absolute delta alongside RMSE/MAE/bias/correlation/R² and worst-case error for a balanced sense of fit quality.
+The command prints a human-readable summary by default; pass `--json` for machine-readable output. Optional flags mirror the gateway defaults so Studio results and CLI analyses stay aligned, and the summary now calls out the SPL 95th-percentile absolute delta alongside RMSE/MAE/bias/correlation/R², the highest and lowest signed deltas, and worst-case error for a balanced sense of fit quality.
 
 Add `--apply-overrides` to trigger a second solver run that applies the derived calibration overrides and reports the corrected SPL, phase, and impedance errors. When enabled you can capture the calibrated metrics via `--calibrated-stats-output`, `--calibrated-delta-output`, and `--calibrated-diagnosis-output` alongside the baseline results.
 

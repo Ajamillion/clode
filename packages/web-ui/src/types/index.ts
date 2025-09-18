@@ -112,6 +112,8 @@ export type MeasurementStats = {
   spl_pearson_r?: number | null
   spl_r_squared?: number | null
   spl_p95_abs_error_db?: number | null
+  spl_highest_delta_db?: number | null
+  spl_lowest_delta_db?: number | null
   max_spl_delta_db?: number | null
   phase_rmse_deg?: number | null
   impedance_mag_rmse_ohm?: number | null

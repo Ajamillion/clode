@@ -212,6 +212,8 @@ export function normaliseMeasurementStats(raw: unknown): MeasurementStats | null
     spl_pearson_r: read('spl_pearson_r'),
     spl_r_squared: read('spl_r_squared'),
     spl_p95_abs_error_db: read('spl_p95_abs_error_db'),
+    spl_highest_delta_db: read('spl_highest_delta_db'),
+    spl_lowest_delta_db: read('spl_lowest_delta_db'),
     max_spl_delta_db: read('max_spl_delta_db'),
     phase_rmse_deg: read('phase_rmse_deg'),
     impedance_mag_rmse_ohm: read('impedance_mag_rmse_ohm'),

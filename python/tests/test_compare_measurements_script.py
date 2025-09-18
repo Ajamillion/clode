@@ -82,6 +82,8 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertAlmostEqual(stats["spl_pearson_r"], 1.0, places=6)
             self.assertAlmostEqual(stats["spl_r_squared"], 1.0, places=6)
             self.assertLess(stats["spl_p95_abs_error_db"], 1e-6)
+            self.assertLess(abs(stats["spl_highest_delta_db"]), 1e-6)
+            self.assertLess(abs(stats["spl_lowest_delta_db"]), 1e-6)
             diagnosis = payload["diagnosis"]
             self.assertAlmostEqual(diagnosis["overall_bias_db"], 0.0, places=6)
             calibration = payload["calibration"]
@@ -102,6 +104,8 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertAlmostEqual(stats_file["spl_r_squared"], 1.0, places=6)
             self.assertLess(stats_file["spl_mae_db"], 1e-6)
             self.assertLess(stats_file["spl_p95_abs_error_db"], 1e-6)
+            self.assertLess(abs(stats_file["spl_highest_delta_db"]), 1e-6)
+            self.assertLess(abs(stats_file["spl_lowest_delta_db"]), 1e-6)
 
             calibrated_stats_file = json.loads(calibrated_stats_path.read_text(encoding="utf-8"))
             self.assertEqual(calibrated_stats_file["sample_count"], len(frequencies))
@@ -109,6 +113,8 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertAlmostEqual(calibrated_stats_file["spl_r_squared"], 1.0, places=6)
             self.assertLess(calibrated_stats_file["spl_mae_db"], 1e-6)
             self.assertLess(calibrated_stats_file["spl_p95_abs_error_db"], 1e-6)
+            self.assertLess(abs(calibrated_stats_file["spl_highest_delta_db"]), 1e-6)
+            self.assertLess(abs(calibrated_stats_file["spl_lowest_delta_db"]), 1e-6)
 
             delta_file = json.loads(delta_path.read_text(encoding="utf-8"))
             self.assertEqual(len(delta_file["frequency_hz"]), len(frequencies))
