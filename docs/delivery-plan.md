@@ -67,8 +67,9 @@ preserving the long-term vision.
   with IIR filter synthesis.
 
 ### 2.6 Runtime & Infrastructure
-- Docker Compose + Kubernetes manifests for production deployment (nginx,
-  gateway, solver workers, Postgres, Redis, Prometheus, Grafana).
+- Docker Compose dev stack (gateway + Studio) now available; Kubernetes manifests
+  will extend it with nginx, solver workers, Postgres, Redis, Prometheus, and
+  Grafana for production deployment.
 - Offline cache bundle for common drivers/topologies with simplified solver and
   iteration cap.
 
@@ -93,9 +94,9 @@ preserving the long-term vision.
 
 - **Milestone M1 – Foundations:** 100 % complete. Repository scaffolding, sealed and vented solvers, FastAPI gateway, Studio HUD, consolidated lint/type/test scripts, and excursion reporting are all in place.
 - **Milestone M2 – Optimisation Loop:** 100 % complete. Telemetry HUD groundwork, solver summaries, compliance curve synthesis, excursion headroom metrics, persisted optimisation runs, measurement ingestion scaffolding, tolerance sweeps, Studio tolerance + measurement panels, Bayesian calibration helpers, CI automation, and the schema catalog endpoints/CLI provide an end-to-end optimisation timeline backed by the gateway.
-- **Milestone M3 – High-Fidelity Solvers:** ≈64 % complete. The reduced-order hybrid solver, port compression heuristics, suspension creep toggle, thermal telemetry, multi-metric measurement overlays, and exportable comparison datasets are landed alongside calibration-aware reruns, but the outstanding Playwright end-to-end suite and Docker Compose orchestration mean the milestone remains open while the FEM/BEM adaptor and deployment tooling continue to mature.
-- **Overall programme:** ≈67 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.64 + 0) ÷ 4 milestones).
-- Latest iteration extends the measurement comparison panel with CSV exports that bundle measured/predicted/calibrated traces, keeping the fit analysis loop auditable while Playwright coverage and deployment automation remain on the near-term queue.
+- **Milestone M3 – High-Fidelity Solvers:** ≈72 % complete. The reduced-order hybrid solver, port compression heuristics, suspension creep toggle, thermal telemetry, multi-metric measurement overlays, exportable comparison datasets, and the new docker-compose stack are landed; the Playwright end-to-end suite remains the last major gap before we can close the milestone.
+- **Overall programme:** ≈68 % toward the v1.0 roadmap ((1.0 + 1.0 + 0.72 + 0) ÷ 4 milestones).
+- Latest iteration delivers the docker-compose gateway + Studio stack so reviewers can launch the platform with one command while Playwright coverage stays on the near-term queue.
 
 ## 4. Completion Strategy
 
@@ -122,6 +123,7 @@ preserving the long-term vision.
 4. **Tooling & QA**
    - ✅ Introduce `ruff` + `mypy` for Python lint/type checks and wire into root `pnpm` scripts.
    - ✅ Author GitHub Actions workflow running JS + Python unit suites and publishing Monte Carlo/tolerance snapshots as artefacts.
+   - ✅ Provide a docker-compose stack that runs the FastAPI gateway and Studio UI together for local smoke tests.
 
 ### 4.2 Closing Milestone M2 – Optimisation Loop
 
@@ -139,7 +141,7 @@ preserving the long-term vision.
 
 ### 4.4 Preparing Milestone M4 – Platform Hardening
 
-- Stand up packaging and deployment automation: Docker Compose for the full stack, plus documented offline bundles with simplified solver/driver datasets.
+- Extend the docker-compose stack with additional services (Redis/worker pools) and package documented offline bundles with simplified solver/driver datasets.
 - Layer observability (structured logs + Prometheus metrics) into the gateway and solver workers, wiring Grafana dashboards for runtime health.
 - Implement licensing and feature-flag enforcement paths needed for pro/academic SKUs outlined in the main spec.
 - Target readiness: **Iterations 18–20**, culminating in release-candidate documentation and installer assets.

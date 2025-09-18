@@ -39,11 +39,13 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   the low-frequency compliance gain and time constants
 - ✅ Hybrid thermal network estimating coil/pole/basket temperature rise with thermal
   compression telemetry in solver responses and gateway payloads
-- ⏳ Playwright-guided Studio end-to-end coverage and Docker Compose orchestration
-  remain outstanding before the M3 high-fidelity milestone can be called complete
+- ✅ Docker Compose orchestration for the gateway + Studio dev stack so the
+  platform can spin up with a single command
+- ⏳ Playwright-guided Studio end-to-end coverage remains outstanding before the
+  M3 high-fidelity milestone can be called complete
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
-Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈64 %**, overall ≈67 % toward the v1.0 target.
+Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈72 %**, overall ≈68 % toward the v1.0 target.
 
 ## Prerequisites
 - Node.js 20+
@@ -71,6 +73,22 @@ Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈64 %**
    The optimisation HUD now records backend runs via `/api/opt/start` and polls `/api/opt/{id}` for convergence data.
 
    Monte Carlo tolerance sweeps are available via `POST /simulate/sealed/tolerances` and `/simulate/vented/tolerances` for quick manufacturing risk snapshots. The hybrid solver request now accepts a `snapshot_stride` field when you need to throttle how many interior pressure slices are captured.
+
+### Docker Compose stack
+
+Spin up the FastAPI gateway and Studio client together without installing local
+dependencies:
+
+```bash
+docker compose up --build
+```
+
+The stack exposes the gateway at http://localhost:8000 (including the
+`/health`, `/opt`, `/simulate`, and `/measurements` routes) and the Studio UI at
+http://localhost:5173.  Solver runs persist inside the `gateway-data` named
+volume so you can stop/restart the stack without losing iteration history.  The
+Compose file targets local development, so rebuild the images (`docker compose
+build`) after pulling upstream changes to the Python or TypeScript sources.
 
 ## Quality checks
 

@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      BAGGER_SPL_DB_PATH: /data/runs.db
+    volumes:
+      - gateway-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web-ui/Dockerfile
+    environment:
+      VITE_API_PROXY: http://gateway:8000
+      VITE_API_BASE: http://gateway:8000
+      VITE_SOLVER_WS_URL: ws://gateway:8000/ws
+    ports:
+      - "5173:5173"
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+volumes:
+  gateway-data:

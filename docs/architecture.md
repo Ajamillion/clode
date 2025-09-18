@@ -77,7 +77,7 @@
 - **Data packages**: `data/driver-db.msgpack`, `data/topologies/*.json` shipped with installer.
 - **Testing**: Pytest for `spl_core`, Vitest/Playwright for Studio, smoke tests for CLI.
 - **Build**: `uv` for Python deps, `pnpm` workspaces for JS/TS; `make` orchestrates.
-- **Packaging**: Docker images optional; primary distribution is Python wheel + npm packages to keep onboarding light.
+- **Packaging**: Docker images with a docker-compose dev stack, alongside Python wheels and npm packages for direct installs.
 - **Observability**: Structured logging (loguru), metrics via `prometheus-client`, OpenTelemetry export toggled by env var.
 
 ## 5. Deployment Modes
@@ -85,9 +85,9 @@
    - FastAPI gateway + simulation core run locally.
    - SQLite + local cache only.
    - Studio served via `pnpm dev` proxying to FastAPI.
-2. **Team Server** (optional)
-   - Docker Compose: gateway, Redis for job queue, Postgres for shared artifacts, Traefik proxy.
-   - GPU workers registered through simple heartbeat service.
+2. **Team Server / Local Compose** (optional)
+   - `docker compose up` launches the FastAPI gateway and Studio UI containers with sensible defaults.
+   - SQLite run history lives in a named volume so state survives restarts; future revisions can add Redis/Postgres as they land.
 3. **Cloud Burst** (future)
    - Reuse same FastAPI container with autoscaling compute pods.
    - Feature flag to offload heavy simulations to GPU nodes.
@@ -116,6 +116,7 @@
 4. Define shared configuration schema (`bagger.config.jsonschema`) and auto-generate TS/Python types.
 5. ✅ Wire Studio SPL plot + WebSocket telemetry using mocked backend and expose persisted run history in the UI.
 6. ✅ Set up CI pipeline executing lint/type/test on both Python and TypeScript stacks, publishing tolerance artefacts for downstream dashboards.
-7. ⏳ Close M3 readiness gaps by adding Playwright-driven Studio regression coverage and Docker Compose orchestration for the gateway + solver stack.
+7. ✅ Ship docker-compose orchestration for the gateway + Studio dev stack so the platform spins up with one command.
+8. ⏳ Close M3 readiness gaps by adding Playwright-driven Studio regression coverage for the Studio workflow.
 
 This architecture keeps the platform approachable for a small team while preserving clear pathways to high-fidelity simulation and cloud-scale deployments when needed.
