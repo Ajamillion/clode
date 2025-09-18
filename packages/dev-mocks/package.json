@@ -1,0 +1,13 @@
+{
+  "name": "@bagger/dev-mocks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ws-mock.js"
+  },
+  "dependencies": {
+    "msgpackr": "^1.12.3",
+    "undici": "^6.19.8",
+    "ws": "^8.18.0"
+  }
+}

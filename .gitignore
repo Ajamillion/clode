@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.pnpm-store/
+.venv/
+__pycache__/
+.pytest_cache/
+.vscode/
+.DS_Store
+.env
+.env.*
+.cache/
+coverage/
+*.log
+tolerance-snapshots/
+schema-exports/
