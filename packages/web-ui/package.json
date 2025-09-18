@@ -1,0 +1,42 @@
+{
+  "name": "@bagger/web-ui",
+  "version": "0.9.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.114.3",
+    "@react-three/fiber": "^9.0.0-rc.6",
+    "@react-three/postprocessing": "^2.16.1",
+    "@tanstack/react-query": "^5.59.16",
+    "detect-gpu": "^5.0.38",
+    "gpu.js": "^2.16.0",
+    "msgpackr": "^1.12.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.160.0",
+    "valtio": "^1.13.2",
+    "zustand": "^4.5.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.2",
+    "@types/node": "^20.12.12",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react-swc": "^3.7.0",
+    "eslint": "^9.5.0",
+    "eslint-config-next": "^15.0.0-canary.79",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.2"
+  }
+}
