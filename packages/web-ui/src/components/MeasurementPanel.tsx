@@ -234,6 +234,8 @@ export function MeasurementPanel() {
       if (stats.spl_rmse_db != null) entries.push({ label: 'SPL RMSE', value: formatDecibel(stats.spl_rmse_db) })
       if (stats.spl_mae_db != null) entries.push({ label: 'SPL MAE', value: formatDecibel(stats.spl_mae_db) })
       if (stats.spl_bias_db != null) entries.push({ label: 'SPL bias', value: formatDecibel(stats.spl_bias_db) })
+      if (stats.spl_median_abs_dev_db != null)
+        entries.push({ label: 'SPL median abs dev', value: formatDecibel(stats.spl_median_abs_dev_db) })
       if (stats.spl_std_dev_db != null) entries.push({ label: 'SPL std dev', value: formatDecibel(stats.spl_std_dev_db) })
       if (stats.spl_pearson_r != null) entries.push({ label: 'SPL correlation', value: formatCorrelation(stats.spl_pearson_r) })
       if (stats.spl_r_squared != null) entries.push({ label: 'SPL R²', value: formatRSquared(stats.spl_r_squared) })
@@ -337,6 +339,9 @@ export function MeasurementPanel() {
         }
         if (calStats.spl_bias_db != null) {
           entries.push({ label: 'Rerun SPL bias', value: formatDecibel(calStats.spl_bias_db) })
+        }
+        if (calStats.spl_median_abs_dev_db != null) {
+          entries.push({ label: 'Rerun SPL median abs dev', value: formatDecibel(calStats.spl_median_abs_dev_db) })
         }
         if (calStats.spl_std_dev_db != null) {
           entries.push({ label: 'Rerun SPL std dev', value: formatDecibel(calStats.spl_std_dev_db) })

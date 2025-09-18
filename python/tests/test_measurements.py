@@ -91,6 +91,9 @@ class MeasurementComparisonTests(unittest.TestCase):
         assert stats.spl_mae_db is not None
         self.assertLess(stats.spl_mae_db, 1e-6)
         self.assertEqual(stats.spl_bias_db, 0.0)
+        self.assertIsNotNone(stats.spl_median_abs_dev_db)
+        assert stats.spl_median_abs_dev_db is not None
+        self.assertLess(stats.spl_median_abs_dev_db, 1e-6)
         self.assertIsNotNone(stats.spl_std_dev_db)
         assert stats.spl_std_dev_db is not None
         self.assertLess(stats.spl_std_dev_db, 1e-6)
@@ -128,6 +131,8 @@ class MeasurementComparisonTests(unittest.TestCase):
         self.assertAlmostEqual(stats.spl_mae_db, 0.8, places=2)
         assert stats.spl_bias_db is not None
         self.assertAlmostEqual(stats.spl_bias_db, 0.8, places=2)
+        assert stats.spl_median_abs_dev_db is not None
+        self.assertLess(stats.spl_median_abs_dev_db, 1e-6)
         assert stats.spl_std_dev_db is not None
         self.assertLess(stats.spl_std_dev_db, 1e-6)
         self.assertIsNotNone(stats.spl_pearson_r)
@@ -251,6 +256,12 @@ class MeasurementComparisonTests(unittest.TestCase):
         self.assertLess(
             smoothed_stats.spl_p95_abs_error_db,
             unsmoothed_stats.spl_p95_abs_error_db,
+        )
+        assert unsmoothed_stats.spl_median_abs_dev_db is not None
+        assert smoothed_stats.spl_median_abs_dev_db is not None
+        self.assertLess(
+            smoothed_stats.spl_median_abs_dev_db,
+            unsmoothed_stats.spl_median_abs_dev_db,
         )
         assert unsmoothed_stats.spl_std_dev_db is not None
         assert smoothed_stats.spl_std_dev_db is not None

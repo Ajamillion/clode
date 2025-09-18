@@ -30,7 +30,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Measurement stats now include SPL mean absolute error so reviewers get an intuitive average-delta gauge alongside RMSE
 - ✅ Measurement stats expose the SPL 95th-percentile absolute error to spotlight worst-case deviations alongside average metrics
 - ✅ Measurement stats also report the highest and lowest SPL deltas so reviewers see the most positive and negative excursions alongside the absolute worst-case value
-- ✅ Measurement stats capture SPL delta standard deviation so reviewers can gauge typical spread alongside extrema-focused metrics
+- ✅ Measurement stats capture SPL delta standard deviation and median absolute deviation so reviewers can gauge typical and robust spread alongside extrema-focused metrics
 - ✅ Measurement comparison exports capture measured/predicted traces, deltas, and calibrated reruns as CSV snapshots for downstream analysis
 - ✅ Measurement comparisons support fractional-octave smoothing across the CLI, gateway, and Studio controls so noisy traces can be tamed consistently
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts
@@ -55,7 +55,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
   panel and mock optimisation stack
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
-Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈92 %**, overall ≈73 % toward the v1.0 target.
+Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈93 %**, overall ≈73 % toward the v1.0 target.
 
 ## Prerequisites
 - Node.js 20+

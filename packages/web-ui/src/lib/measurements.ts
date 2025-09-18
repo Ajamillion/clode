@@ -209,6 +209,7 @@ export function normaliseMeasurementStats(raw: unknown): MeasurementStats | null
     spl_rmse_db: read('spl_rmse_db'),
     spl_mae_db: read('spl_mae_db'),
     spl_bias_db: read('spl_bias_db'),
+    spl_median_abs_dev_db: read('spl_median_abs_dev_db'),
     spl_std_dev_db: read('spl_std_dev_db'),
     spl_pearson_r: read('spl_pearson_r'),
     spl_r_squared: read('spl_r_squared'),

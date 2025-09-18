@@ -181,6 +181,25 @@ function computeMae(values) {
   return sum / values.length
 }
 
+function computeMedian(values) {
+  if (!values || !values.length) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  if (sorted.length % 2 === 1) return sorted[mid]
+  return (sorted[mid - 1] + sorted[mid]) / 2
+}
+
+function computeMedianAbsDev(values) {
+  if (!values || !values.length) return null
+  const centre = computeMedian(values.filter((value) => Number.isFinite(value)))
+  if (centre == null) return null
+  const deviations = values
+    .filter((value) => Number.isFinite(value))
+    .map((value) => Math.abs(value - centre))
+  if (!deviations.length) return 0
+  return computeMedian(deviations)
+}
+
 function computeStdDev(values) {
   if (!values || !values.length) return null
   const mean = values.reduce((total, value) => total + value, 0) / values.length
@@ -241,6 +260,7 @@ function buildMeasurementStats(delta) {
     spl_rmse_db: computeRmse(delta.spl_delta_db),
     spl_mae_db: computeMae(delta.spl_delta_db),
     spl_bias_db: computeMean(delta.spl_delta_db),
+    spl_median_abs_dev_db: computeMedianAbsDev(delta.spl_delta_db),
     spl_std_dev_db: computeStdDev(delta.spl_delta_db),
     spl_pearson_r: null,
     spl_r_squared: null,

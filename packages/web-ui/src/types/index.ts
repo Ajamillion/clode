@@ -109,6 +109,7 @@ export type MeasurementStats = {
   spl_rmse_db?: number | null
   spl_mae_db?: number | null
   spl_bias_db?: number | null
+  spl_median_abs_dev_db?: number | null
   spl_std_dev_db?: number | null
   spl_pearson_r?: number | null
   spl_r_squared?: number | null

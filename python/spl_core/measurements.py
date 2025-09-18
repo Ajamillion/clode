@@ -172,6 +172,7 @@ class MeasurementStats:
     spl_rmse_db: float | None
     spl_mae_db: float | None
     spl_bias_db: float | None
+    spl_median_abs_dev_db: float | None
     spl_std_dev_db: float | None
     spl_pearson_r: float | None
     spl_r_squared: float | None
@@ -188,6 +189,7 @@ class MeasurementStats:
             "spl_rmse_db": self.spl_rmse_db,
             "spl_mae_db": self.spl_mae_db,
             "spl_bias_db": self.spl_bias_db,
+            "spl_median_abs_dev_db": self.spl_median_abs_dev_db,
             "spl_std_dev_db": self.spl_std_dev_db,
             "spl_pearson_r": self.spl_pearson_r,
             "spl_r_squared": self.spl_r_squared,
@@ -377,6 +379,7 @@ def compare_measurement_to_prediction(
         spl_rmse_db=_rmse(spl_delta),
         spl_mae_db=_mae(spl_delta),
         spl_bias_db=_mean(spl_delta),
+        spl_median_abs_dev_db=_median_abs_deviation(spl_delta),
         spl_std_dev_db=_stddev(spl_delta),
         spl_pearson_r=_pearson_correlation(
             measurement_for_stats.spl_db, prediction_for_stats.spl_db
@@ -552,6 +555,27 @@ def _mae(values: Sequence[float] | None) -> float | None:
     if not valid:
         return None
     return sum(valid) / len(valid)
+
+
+def _median(values: Sequence[float]) -> float:
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2 == 1:
+        return ordered[mid]
+    return 0.5 * (ordered[mid - 1] + ordered[mid])
+
+
+def _median_abs_deviation(values: Sequence[float] | None) -> float | None:
+    if values is None:
+        return None
+    valid = [v for v in values if not math.isnan(v)]
+    if not valid:
+        return None
+    centre = _median(valid)
+    deviations = [abs(value - centre) for value in valid]
+    if not deviations:
+        return 0.0
+    return _median(deviations)
 
 
 def _stddev(values: Sequence[float] | None) -> float | None:
