@@ -14,7 +14,7 @@ from __future__ import annotations
 import cmath
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from math import exp, log10, pi, sqrt
+from math import exp, factorial, log10, pi, radians, sin, sqrt
 from typing import Any
 
 from ..drivers import (
@@ -89,6 +89,62 @@ class HybridFieldSnapshot:
         return data
 
 
+DIRECTIVITY_ANGLES_DEG = (0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0)
+
+
+def _bessel_j1(x: float, terms: int = 12) -> float:
+    """Approximate the Bessel function of the first kind J₁(x).
+
+    The implementation relies on the Taylor-series expansion which converges
+    rapidly for the modest arguments encountered in the piston directivity
+    model.  The default number of terms provides sub-0.1 dB accuracy for the
+    frequency ranges the hybrid solver targets.
+    """
+
+    if abs(x) < 1e-8:
+        # Series limit: J1(x) ≈ x/2 - x^3/16 for very small arguments.
+        return x * 0.5 - (x**3) / 16.0
+
+    half = x * 0.5
+    result = 0.0
+    for m in range(terms):
+        sign = -1.0 if m % 2 else 1.0
+        power = half ** (2 * m + 1)
+        denom = float(factorial(m) * factorial(m + 1))
+        result += sign * power / denom
+    return result
+
+
+def _piston_directivity_gain(k: float, radius_m: float, theta: float) -> float:
+    """Return the magnitude response of a baffled piston at ``theta`` radians."""
+
+    if k <= 0.0 or radius_m <= 0.0:
+        return 1.0
+    argument = k * radius_m * sin(theta)
+    if abs(argument) < 1e-6:
+        return 1.0
+    value = 2.0 * _bessel_j1(argument) / argument
+    return float(abs(value))
+
+
+def _directivity_index_db(k: float, radius_m: float) -> float:
+    """Approximate the directivity index in decibels for a baffled piston."""
+
+    if k <= 0.0 or radius_m <= 0.0:
+        return 0.0
+    steps = 180
+    step = pi / steps
+    integral = 0.0
+    for i in range(steps):
+        theta = (i + 0.5) * step
+        gain = _piston_directivity_gain(k, radius_m, theta)
+        integral += (gain * gain) * sin(theta)
+    integral *= step
+    if integral <= 0.0:
+        return 0.0
+    return 10.0 * (log10(2.0) - log10(integral))
+
+
 @dataclass(slots=True)
 class HybridSolverResult:
     """Frequency response enriched with interior field snapshots."""
@@ -105,6 +161,9 @@ class HybridSolverResult:
     thermal_compression_db: list[float]
     port_vortex_loss_db: list[float]
     port_noise_spl_db: list[float]
+    directivity_angles_deg: list[float]
+    directivity_response_db: list[list[float]]
+    directivity_index_db: list[float]
     field_snapshots: list[HybridFieldSnapshot]
     snapshot_stride: int = 1
 
@@ -134,6 +193,9 @@ class HybridSolverResult:
             "thermal_compression_db": list(self.thermal_compression_db),
             "port_vortex_loss_db": list(self.port_vortex_loss_db),
             "port_noise_spl_db": list(self.port_noise_spl_db),
+            "directivity_angles_deg": list(self.directivity_angles_deg),
+            "directivity_response_db": [list(values) for values in self.directivity_response_db],
+            "directivity_index_db": list(self.directivity_index_db),
             "snapshot_stride": int(self.snapshot_stride),
         }
         if include_snapshots:
@@ -168,6 +230,9 @@ class HybridSolverSummary:
     max_thermal_compression_db: float | None = None
     thermal_time_constants_s: tuple[float, float, float] | None = None
     thermal_reference_temp_c: float = AMBIENT_TEMPERATURE_C
+    max_directivity_index_db: float | None = None
+    mean_directivity_index_db: float | None = None
+    directivity_angles_deg: tuple[float, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -207,6 +272,9 @@ class HybridSolverSummary:
                 else None
             ),
             "thermal_reference_temp_c": self.thermal_reference_temp_c,
+            "max_directivity_index_db": self.max_directivity_index_db,
+            "mean_directivity_index_db": self.mean_directivity_index_db,
+            "directivity_angles_deg": list(self.directivity_angles_deg),
         }
 
 
@@ -329,6 +397,9 @@ class HybridBoxSolver:
         self._port_position: tuple[float, float, float] | None = None
         self._cab_mech: float | None = None
         self._boundary_loss = 1.5
+        self._piston_radius_m = sqrt(max(self.driver.sd_m2 / pi, 1e-12))
+        self._directivity_angles_deg = list(DIRECTIVITY_ANGLES_DEG)
+        self._directivity_angles_rad = [radians(angle) for angle in self._directivity_angles_deg]
 
         if isinstance(enclosure, VentedBoxDesign):
             self._mode = "vented"
@@ -381,6 +452,10 @@ class HybridBoxSolver:
         noise_level_samples: list[float] = []
         snapshots: list[HybridFieldSnapshot] = []
         port_noise_reference_m = float(mic_distance_m)
+        directivity_samples: list[list[float]] = [
+            [] for _ in self._directivity_angles_deg
+        ]
+        directivity_index_values: list[float] = []
 
         total_pressure_rms = 0.0
         total_cells = 0
@@ -406,6 +481,11 @@ class HybridBoxSolver:
 
             omega = 2 * pi * freq
             k = omega / SPEED_OF_SOUND
+
+            di_db, directivity_levels = self._directivity_profile(k)
+            directivity_index_values.append(di_db)
+            for idx, level in enumerate(directivity_levels):
+                directivity_samples[idx].append(level)
 
             if self._mode == "sealed":
                 (
@@ -565,6 +645,15 @@ class HybridBoxSolver:
             max_thermal_compression_db=max(compression_losses) if compression_losses else None,
             thermal_time_constants_s=self._thermal_network.time_constants(),
             thermal_reference_temp_c=self._thermal_network.ambient_c,
+            max_directivity_index_db=(
+                max(directivity_index_values) if directivity_index_values else None
+            ),
+            mean_directivity_index_db=(
+                sum(directivity_index_values) / len(directivity_index_values)
+                if directivity_index_values
+                else None
+            ),
+            directivity_angles_deg=tuple(self._directivity_angles_deg),
         )
 
         result = HybridSolverResult(
@@ -580,10 +669,27 @@ class HybridBoxSolver:
             thermal_compression_db=compression_losses,
             port_vortex_loss_db=port_vortex_losses,
             port_noise_spl_db=port_noise_levels,
+            directivity_angles_deg=list(self._directivity_angles_deg),
+            directivity_response_db=[list(samples) for samples in directivity_samples],
+            directivity_index_db=list(directivity_index_values),
             field_snapshots=snapshots,
             snapshot_stride=int(snapshot_stride),
         )
         return result, summary
+
+    def _directivity_profile(self, wavenumber: float) -> tuple[float, list[float]]:
+        """Return the directivity index and relative levels for configured angles."""
+
+        if wavenumber <= 0.0:
+            return 0.0, [0.0 for _ in self._directivity_angles_rad]
+
+        levels: list[float] = []
+        for theta in self._directivity_angles_rad:
+            gain = _piston_directivity_gain(wavenumber, self._piston_radius_m, theta)
+            level = 20.0 * log10(max(gain, 1e-9))
+            levels.append(level)
+        di_db = _directivity_index_db(wavenumber, self._piston_radius_m)
+        return di_db, levels
 
     def _suspension_compliance(self, omega: float) -> complex:
         compliance = complex(self._cms, 0.0)

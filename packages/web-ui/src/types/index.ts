@@ -31,6 +31,12 @@ export type OptParams = {
 
 export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 
+export type HybridDirectivity = {
+  angles_deg: number[]
+  response_db: number[][]
+  index_db: number[]
+}
+
 export type OptimizationRunResult = {
   history?: IterationMetrics[]
   convergence?: {
@@ -44,6 +50,7 @@ export type OptimizationRunResult = {
   response?: Record<string, number[]>
   metrics?: Record<string, number>
   alignment?: string
+  directivity?: HybridDirectivity | null
 }
 
 export type OptimizationRun = {

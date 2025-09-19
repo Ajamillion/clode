@@ -70,6 +70,10 @@ def test_hybrid_solver_pressure_hotspot_near_driver() -> None:
     assert "max_port_vortex_loss_db" in summary_payload
     assert summary_payload["max_port_vortex_loss_db"] is None
     assert summary_payload["max_port_noise_spl_db"] is None
+    assert summary.max_directivity_index_db is not None
+    assert summary.mean_directivity_index_db is not None
+    assert summary.directivity_angles_deg
+    assert summary.directivity_angles_deg[0] == 0.0
 
 
 def test_hybrid_solver_reports_port_compression_metrics() -> None:
@@ -114,6 +118,10 @@ def test_hybrid_solver_reports_port_compression_metrics() -> None:
         assert summary.max_port_noise_spl_db >= port_snapshot.port_noise_spl_db
     else:
         assert port_snapshot.port_vortex_loss_db in (None, 0.0)
+    assert summary.max_directivity_index_db is not None
+    assert summary.max_directivity_index_db >= 0.0
+    assert summary.directivity_angles_deg
+    assert 45.0 in summary.directivity_angles_deg
 
 
 def test_hybrid_port_noise_tracks_microphone_distance() -> None:
@@ -187,6 +195,15 @@ def test_hybrid_solver_matches_lumped_spl_baseline() -> None:
     labels = {snap.plane_label for snap in result.field_snapshots}
     assert "mid-plane" in labels
     assert result.snapshot_stride == 1
+    assert result.directivity_angles_deg
+    assert len(result.directivity_response_db) == len(result.directivity_angles_deg)
+    assert len(result.directivity_index_db) == len(result.frequency_hz)
+    zero_idx = result.directivity_angles_deg.index(0.0)
+    assert all(isclose(value, 0.0, abs_tol=1e-6) for value in result.directivity_response_db[zero_idx])
+    forty_five_idx = result.directivity_angles_deg.index(45.0)
+    off_axis_levels = result.directivity_response_db[forty_five_idx]
+    assert len(off_axis_levels) == len(result.frequency_hz)
+    assert all(level <= 0.0 for level in off_axis_levels)
 
     # SPL should track the sealed-box lumped model within a small tolerance for low
     # frequencies because the hybrid solver reuses the same underlying impedance

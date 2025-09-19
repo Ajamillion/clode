@@ -49,13 +49,16 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Hybrid port aeroacoustic heuristics estimating vortex shedding losses and jet
   noise SPL (referenced to the requested microphone distance) so chuffing risk is
   visible in solver traces and summaries
+- ✅ Hybrid solver piston directivity traces and directivity index telemetry so
+  off-axis behaviour accompanies the interior pressure snapshots for reviewers,
+  with Studio’s spectra panel now charting the index curve and peak-angle pattern
 - ✅ Docker Compose orchestration for the gateway + Studio dev stack so the
   platform can spin up with a single command
 - ✅ Playwright-guided Studio end-to-end coverage exercises the measurement
   panel and mock optimisation stack
 - 🛠️ Extended FastAPI gateway, optimisation stack, and FEM/BEM solvers under development
 
-Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 ≈93 %**, overall ≈73 % toward the v1.0 target.
+Current roadmap snapshot: **M1 100 %**, **M2 100 %**, **M3 100 %**, overall ≈75 % toward the v1.0 target.
 
 ## Prerequisites
 - Node.js 20+

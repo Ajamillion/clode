@@ -122,6 +122,17 @@ class SchemaExportTests(unittest.TestCase):
             "thermal_compression_db",
         ]:
             self.assertIn(key, schema["properties"])
+        self.assertIn("directivity_angles_deg", schema["properties"])
+        directivity_angles = schema["properties"]["directivity_angles_deg"]
+        self.assertEqual(directivity_angles["type"], "array")
+        self.assertIn("directivity_response_db", schema["properties"])
+        directivity_response = schema["properties"]["directivity_response_db"]
+        self.assertEqual(directivity_response["type"], "array")
+        self.assertEqual(directivity_response["items"]["type"], "array")
+        self.assertIn("directivity_index_db", schema["properties"])
+        self.assertIn("max_directivity_index_db", summary_props)
+        self.assertIn("mean_directivity_index_db", summary_props)
+        self.assertIn("directivity_angles_deg", summary_props)
 
     def test_solver_catalog_lists_both_solvers(self) -> None:
         catalog = solver_json_schemas()

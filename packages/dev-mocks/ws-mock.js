@@ -43,6 +43,35 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload))
 }
 
+function buildDirectivity(frequencies) {
+  const angles = [0, 15, 30, 45, 60, 75, 90]
+  const radius = 0.09
+  const soundSpeed = 343
+  const responses = angles.map(() => [])
+  const index = []
+
+  frequencies.forEach((freq) => {
+    const omega = 2 * Math.PI * freq
+    const ka = (omega * radius) / soundSpeed
+    const di = Math.max(0, Math.min(10, Math.log10(1 + ka * 2.4) * 8.2))
+    index.push(di)
+    angles.forEach((angle, idx) => {
+      const theta = (angle * Math.PI) / 180
+      const base = Math.cos(theta)
+      const shaped = Math.max(1e-3, Math.pow(Math.max(base, 0), 1 + ka * 0.28))
+      const taper = Math.exp(-theta * theta * (0.015 + ka * 0.002))
+      const level = 20 * Math.log10(shaped * taper)
+      responses[idx].push(level)
+    })
+  })
+
+  return {
+    angles,
+    response: responses,
+    index
+  }
+}
+
 function buildResponseTraces(iter) {
   const points = 60
   const frequencies = Array.from({ length: points }, (_, i) => 20 * Math.pow(200 / 20, i / (points - 1)))
@@ -53,6 +82,7 @@ function buildResponseTraces(iter) {
   const coneVelocity = frequencies.map((_, idx) => 0.25 + 0.04 * Math.sin(idx / 5))
   const coneDisp = coneVelocity.map((vel, idx) => vel / (2 * Math.PI * Math.max(frequencies[idx], 1)))
   const portVelocity = frequencies.map((f) => 8 + 2 * Math.exp(-(Math.log(f) - Math.log(40)) ** 2))
+  const directivity = buildDirectivity(frequencies)
   return {
     frequency_hz: frequencies,
     spl_db: spl,
@@ -60,12 +90,20 @@ function buildResponseTraces(iter) {
     impedance_imag: impedanceImag,
     cone_velocity_ms: coneVelocity,
     cone_displacement_m: coneDisp,
-    port_velocity_ms: portVelocity
+    port_velocity_ms: portVelocity,
+    directivity_angles_deg: directivity.angles,
+    directivity_response_db: directivity.response,
+    directivity_index_db: directivity.index
   }
 }
 
 function buildSummary(traces) {
   const maxSpl = Math.max(...traces.spl_db)
+  const diSamples = Array.isArray(traces.directivity_index_db) ? traces.directivity_index_db : null
+  const maxDi = diSamples && diSamples.length ? Math.max(...diSamples) : null
+  const meanDi = diSamples && diSamples.length
+    ? diSamples.reduce((sum, value) => sum + value, 0) / diSamples.length
+    : null
   return {
     fb_hz: 42.0,
     f3_low_hz: 32.0,
@@ -76,7 +114,10 @@ function buildSummary(traces) {
     max_port_velocity_ms: Math.max(...traces.port_velocity_ms),
     excursion_ratio: 0.58,
     excursion_headroom_db: 10.8,
-    safe_drive_voltage_v: 7.2
+    safe_drive_voltage_v: 7.2,
+    max_directivity_index_db: maxDi,
+    mean_directivity_index_db: meanDi,
+    directivity_angles_deg: traces.directivity_angles_deg
   }
 }
 

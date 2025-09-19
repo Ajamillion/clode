@@ -296,6 +296,24 @@ def hybrid_simulation_response_schema() -> dict[str, Any]:
             min_items=1,
             description="Estimated acoustic noise radiated by the port at the reference distance.",
         ),
+        "directivity_angles_deg": _number_array_schema(
+            title="Directivity sample angles (deg)",
+            min_items=1,
+            description="Polar angles at which off-axis SPL deltas are reported.",
+        ),
+        "directivity_response_db": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {"type": "number"},
+            },
+            "description": "Relative SPL change (dB) for each configured directivity angle.",
+        },
+        "directivity_index_db": _number_array_schema(
+            title="Directivity index (dB)",
+            min_items=1,
+            description="Directivity index derived from the piston model for each frequency sample.",
+        ),
         "field_snapshots": {
             "type": "array",
             "items": snapshot_schema,
@@ -358,6 +376,9 @@ def hybrid_simulation_response_schema() -> dict[str, Any]:
         "thermal_compression_db",
         "port_vortex_loss_db",
         "port_noise_spl_db",
+        "directivity_angles_deg",
+        "directivity_response_db",
+        "directivity_index_db",
         "field_snapshots",
         "summary",
         "alignment",

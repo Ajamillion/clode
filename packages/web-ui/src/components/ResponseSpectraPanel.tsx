@@ -159,6 +159,8 @@ function buildSummary(run: OptimizationRun | null) {
   add('Target SPL', metricValue('target_spl_db'), (value) => `${value.toFixed(1)} dB`)
   add('Safe drive', metricValue('safe_drive_voltage_v') ?? summaryValue('safe_drive_voltage_v'), (value) => `${value.toFixed(2)} V`)
   add('Enclosure volume', metricValue('volume_l'), (value) => `${value.toFixed(1)} L`)
+  add('Max directivity index', summaryValue('max_directivity_index_db'), (value) => `${value.toFixed(1)} dB`)
+  add('Mean directivity index', summaryValue('mean_directivity_index_db'), (value) => `${value.toFixed(1)} dB`)
   add('Alignment Fc', summaryValue('fc_hz'), (value) => `${value.toFixed(1)} Hz`)
   add('Alignment Fb', summaryValue('fb_hz'), (value) => `${value.toFixed(1)} Hz`)
   add('Excursion headroom', summaryValue('excursion_headroom_db'), (value) => `${value.toFixed(1)} dB`)
@@ -190,6 +192,10 @@ export function ResponseSpectraPanel() {
   const displacement = response?.cone_displacement_m
   const portVelocity = response?.port_velocity_ms
   const coneVelocity = response?.cone_velocity_ms
+  const directivity = selectedRun?.result?.directivity
+  const directivityIndex = directivity?.index_db
+  const directivityAngles = directivity?.angles_deg
+  const directivityResponse = directivity?.response_db
 
   const impedanceMagnitude = useMemo(() => {
     if (!impReal || !impImag) return undefined
@@ -255,8 +261,58 @@ export function ResponseSpectraPanel() {
       }
     }
 
+    const directivityChart = buildChart(frequencies, directivityIndex, {
+      id: 'directivity-index',
+      label: 'Directivity index',
+      unit: 'dB',
+      color: '#facc15'
+    })
+    if (directivityChart) defs.push(directivityChart)
+
     return defs
-  }, [frequencies, spl, impedanceMagnitude, portVelocity, displacement, coneVelocity])
+  }, [
+    frequencies,
+    spl,
+    impedanceMagnitude,
+    portVelocity,
+    displacement,
+    coneVelocity,
+    directivityIndex
+  ])
+
+  const directivityPattern = useMemo(() => {
+    if (!directivityAngles || !directivityResponse || !frequencies || !directivityIndex) {
+      return null
+    }
+
+    const usableLength = Math.min(directivityIndex.length, frequencies.length)
+    if (usableLength === 0) return null
+
+    let peakIndex = 0
+    let peakValue = directivityIndex[0] ?? Number.NEGATIVE_INFINITY
+    for (let i = 1; i < usableLength; i += 1) {
+      const value = directivityIndex[i]
+      if (value != null && Number.isFinite(value) && value > peakValue) {
+        peakValue = value
+        peakIndex = i
+      }
+    }
+
+    const frequency = frequencies[peakIndex]
+    const entries: { angle: number; value: number }[] = []
+    for (let i = 0; i < directivityAngles.length; i += 1) {
+      const angle = directivityAngles[i]
+      const samples = directivityResponse[i]
+      if (!Number.isFinite(angle) || !samples || peakIndex >= samples.length) continue
+      const value = samples[peakIndex]
+      if (value == null || !Number.isFinite(value)) continue
+      entries.push({ angle, value })
+    }
+
+    if (!entries.length) return null
+    entries.sort((a, b) => a.angle - b.angle)
+    return { frequency, entries }
+  }, [directivityAngles, directivityResponse, directivityIndex, frequencies])
 
   const summaryEntries = useMemo(() => buildSummary(selectedRun), [selectedRun])
   const updatedAt = selectedRun ? formatRelative(selectedRun.updated_at) : '—'
@@ -311,6 +367,23 @@ export function ResponseSpectraPanel() {
           ))
         )}
       </div>
+
+      {directivityPattern && (
+        <section className="spectra__directivity" aria-label="Directivity pattern">
+          <header className="spectra__directivity-header">
+            <span>Directivity pattern</span>
+            <span>@ {formatHz(directivityPattern.frequency)}</span>
+          </header>
+          <ul className="spectra__directivity-list">
+            {directivityPattern.entries.map((entry) => (
+              <li key={entry.angle}>
+                <span>{entry.angle.toFixed(0)}°</span>
+                <span>{entry.value >= 0 ? `+${entry.value.toFixed(1)}` : entry.value.toFixed(1)} dB</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {summaryEntries.length > 0 && (
         <dl className="spectra__summary">

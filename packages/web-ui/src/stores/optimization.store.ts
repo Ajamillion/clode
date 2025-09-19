@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  HybridDirectivity,
   IterationMetrics,
   OptParams,
   OptimizationRun,
@@ -89,6 +90,55 @@ function normaliseResponseRecord(value: unknown): Record<string, number[]> | und
   return Object.keys(record).length ? record : undefined
 }
 
+function normaliseNumberArray(raw: unknown): number[] | null {
+  if (!Array.isArray(raw)) return null
+  const values = raw.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+  return values.length ? values : null
+}
+
+function normaliseDirectivity(raw: unknown): HybridDirectivity | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const obj = raw as Record<string, unknown>
+  const angles = normaliseNumberArray(obj.directivity_angles_deg)
+  const index = normaliseNumberArray(obj.directivity_index_db)
+  const responseRaw = obj.directivity_response_db
+  if (!angles || !Array.isArray(responseRaw)) return undefined
+
+  const response: number[][] = []
+  for (const entry of responseRaw) {
+    if (!Array.isArray(entry)) {
+      response.push([])
+      continue
+    }
+    const samples = entry.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+    response.push(samples)
+  }
+
+  const count = Math.min(angles.length, response.length)
+  if (count === 0) return undefined
+
+  const trimmedAngles = angles.slice(0, count)
+  const trimmedResponse = response.slice(0, count)
+  const indexValues = index ?? []
+
+  if (!indexValues.length) {
+    return {
+      angles_deg: trimmedAngles,
+      response_db: trimmedResponse,
+      index_db: []
+    }
+  }
+
+  const bandLength = indexValues.length
+  const harmonised = trimmedResponse.map((samples) => samples.slice(0, bandLength))
+
+  return {
+    angles_deg: trimmedAngles,
+    response_db: harmonised,
+    index_db: indexValues
+  }
+}
+
 function normaliseHistory(entries: unknown): IterationMetrics[] | undefined {
   if (!Array.isArray(entries)) return undefined
   const mapped = entries
@@ -125,13 +175,15 @@ function normaliseRunResult(raw: unknown): OptimizationRunResult | undefined {
       }
     : undefined
   const alignment = typeof obj.alignment === 'string' ? obj.alignment : undefined
+  const responseRaw = obj.response
   return {
     history,
     convergence,
     summary: normaliseSummaryRecord(obj.summary),
-    response: normaliseResponseRecord(obj.response),
+    response: normaliseResponseRecord(responseRaw),
     metrics: normaliseNumberRecord(obj.metrics),
-    alignment
+    alignment,
+    directivity: normaliseDirectivity(responseRaw) ?? null
   }
 }
 

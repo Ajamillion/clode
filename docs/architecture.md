@@ -5,7 +5,7 @@
 - Prioritize maintainability and incremental delivery over speculative scope while preserving extensibility for advanced research features.
 - Ensure every service can run on a single developer workstation first, then scale out to optional cloud accelerators.
 
-_Progress snapshot:_ M1 and M2 remain complete, M3 now sits around 93 % after layering SPL delta standard deviation and median absolute deviation alongside the existing correlation/MAE/R²/P95/highest/lowest telemetry and wiring it through Studio + CLI summaries, keeping the overall roadmap near 73 % toward v1.0.
+_Progress snapshot:_ M1 and M2 remain complete while M3 now closes at 100 % after adding piston directivity traces with directivity index telemetry—now surfaced in the Studio spectra overlay—on top of the earlier SPL correlation/MAE/R²/P95/median absolute deviation metrics, keeping the overall roadmap about 75 % toward v1.0.
 
 ## 2. Guiding Design Principles
 1. **Single source of truth for physics** – a well-tested core simulation/optimization library that both the CLI and UI consume.
@@ -40,7 +40,7 @@ _Progress snapshot:_ M1 and M2 remain complete, M3 now sits around 93 % after 
 - **Modules**:
   - `drivers`: TS parameter ingestion, validation, interpolation (kNN + GP-lite) plus suspension compliance curve synthesis and excursion utilities.
   - `mechanics`: Suspension/BL curve estimators with physics-informed regularization (progressively migrating out of `drivers`).
-  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics) plus the new hybrid pressure-field prototype that previews FEM/BEM outputs (interior pressure slices, hotspot coordinate mapping, port compression heuristics, Mach tracking, configurable snapshot stride, suspension creep modelling, lightweight thermal network for coil/pole/basket heating and thermal compression telemetry, and aeroacoustic heuristics for vortex shedding loss + jet-noise SPL estimates referenced to the caller's microphone distance) without heavy numerical dependencies.
+  - `acoustics`: Reduced-order box/port solver (sealed + vented alignments landed with excursion headroom metrics) plus the new hybrid pressure-field prototype that previews FEM/BEM outputs (interior pressure slices, hotspot coordinate mapping, port compression heuristics, Mach tracking, configurable snapshot stride, suspension creep modelling, lightweight thermal network for coil/pole/basket heating and thermal compression telemetry, aeroacoustic heuristics for vortex shedding loss + jet-noise SPL estimates referenced to the caller's microphone distance, and piston directivity traces with directivity index telemetry now piped through the Studio HUD) without heavy numerical dependencies.
   - `optimization`: Multi-resolution optimizer (differential evolution ➜ L-BFGS) with constraint ledger.
   - `validation`: Monte Carlo tolerance analysis (initial sealed/vented sweep landed) and reciprocity/thermal sanity checks.
   - `measurements`: Klippel/REW ingestion, trace alignment, heuristic diagnosis (level trims, leakage hints, port retunes), and measurement-vs-simulation delta statistics exposed through both the FastAPI endpoints and a standalone CLI, now powering multi-metric overlays (SPL, phase, impedance magnitude, THD) with solver delta toggles, Pearson SPL correlation, SPL mean absolute error, SPL R² scoring, SPL delta standard deviation, SPL median absolute deviation, SPL 95th-percentile absolute error, highest/lowest signed SPL deltas, and CSV exports for measured/predicted/calibrated traces inside Studio.
@@ -120,6 +120,6 @@ _Progress snapshot:_ M1 and M2 remain complete, M3 now sits around 93 % after 
 6. ✅ Set up CI pipeline executing lint/type/test on both Python and TypeScript stacks, publishing tolerance artefacts for downstream dashboards.
 7. ✅ Ship docker-compose orchestration for the gateway + Studio dev stack so the platform spins up with one command.
 8. ✅ Land Playwright-driven Studio regression coverage for the Studio workflow, wiring the mock optimisation stack into automated checks.
-9. ⏳ Expand hybrid solver fidelity with FEM/BEM coupling accuracy sweeps and richer snapshot validation.
+9. ✅ Expand hybrid solver fidelity with piston directivity, aeroacoustic heuristics, and richer snapshot validation to close the high-fidelity milestone.
 
 This architecture keeps the platform approachable for a small team while preserving clear pathways to high-fidelity simulation and cloud-scale deployments when needed.
