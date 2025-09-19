@@ -104,6 +104,13 @@ volume so you can stop/restart the stack without losing iteration history.  The
 Compose file targets local development, so rebuild the images (`docker compose
 build`) after pulling upstream changes to the Python or TypeScript sources.
 
+### Mock reference
+
+- Review the [development mock log](docs/mock-log.md) for a catalog of all
+  synthetic HTTP endpoints and WebSocket messages exposed by the dev mocks.
+- At runtime you can request `GET /api/mock-log` from the mock server to obtain
+  the same catalog as JSON for integration tests or health probes.
+
 ## Quality checks
 
 Run the consolidated automation from the repo root:

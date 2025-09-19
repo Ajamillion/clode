@@ -7,6 +7,129 @@ const runs = new Map()
 const sockets = new Set()
 const simulations = new Map()
 
+const mockLog = Object.freeze({
+  version: '2025.09',
+  http: [
+    {
+      method: 'POST',
+      path: '/api/opt/start',
+      description: 'Queue a synthetic optimisation run and receive a run record',
+      sample: { id: 'run_123', status: 'queued', params: { targetSpl: 118 } }
+    },
+    {
+      method: 'GET',
+      path: '/api/opt/runs?limit=20&status=running',
+      description: 'Retrieve the most recent runs filtered by status with history snippets',
+      sample: {
+        runs: [
+          {
+            id: 'run_abc',
+            status: 'running',
+            result: { history: [{ iter: 1, loss: 0.94 }] }
+          }
+        ]
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/opt/stats',
+      description: 'Get aggregate optimisation counts grouped by queue status',
+      sample: { counts: { queued: 1, running: 1, succeeded: 2, failed: 0 }, total: 4 }
+    },
+    {
+      method: 'GET',
+      path: '/api/opt/{id}',
+      description: 'Read the latest state and convergence summary for a single run',
+      sample: {
+        id: 'run_abc',
+        status: 'succeeded',
+        result: { convergence: { converged: true, iterations: 90 } }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/schemas/solvers',
+      description: 'List available solver schemas with title + required field metadata',
+      sample: { solvers: { sealed: { request: { title: 'SealedBoxSimulationRequest' } } } }
+    },
+    {
+      method: 'GET',
+      path: '/api/schemas/solvers/{alignment}',
+      description: 'Fetch the schema pair for the requested alignment',
+      sample: {
+        alignment: 'sealed',
+        request: { title: 'SealedBoxSimulationRequest' },
+        response: { title: 'SealedBoxSimulationResponse' }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/measurements/preview',
+      description: 'Return a synthetic measurement preview when uploads are disabled',
+      sample: {
+        measurement: {
+          frequency_hz: [20, 25, 31.5],
+          spl_db: [93.2, 94.1, 95.0]
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/measurements/sealed/compare',
+      description: 'Compare a sealed prediction against an uploaded measurement trace',
+      sample: {
+        summary: { max_spl_db: 110.2 },
+        prediction: { spl_db: [100.2] },
+        delta: { spl_db: [0.8] },
+        stats: { rmse_db: 1.2 }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/measurements/vented/compare',
+      description: 'Compare a vented prediction against an uploaded measurement trace',
+      sample: {
+        summary: { max_spl_db: 111.8 },
+        prediction: { spl_db: [101.4] },
+        delta: { spl_db: [0.6] },
+        stats: { rmse_db: 1.1 }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/mock-log',
+      description: 'Return this catalog for programmatic discovery',
+      sample: { version: '2025.09', http: 10, websocket: 4 }
+    }
+  ],
+  websocket: [
+    {
+      type: 'ITERATION',
+      description: 'Per-iteration optimisation metrics',
+      sample: { iter: 12, loss: 0.32, gradNorm: 0.018, topology: 'baseline' }
+    },
+    {
+      type: 'TOPOLOGY_SWITCH',
+      description: 'Announces that optimisation pivoted to a new topology',
+      sample: { from: 'baseline', to: 'metamaterial' }
+    },
+    {
+      type: 'CONSTRAINT_VIOLATION',
+      description: 'Highlights simulated constraint pressure during optimisation',
+      sample: { constraint: 'port_velocity', severity: 0.42 }
+    },
+    {
+      type: 'CONVERGENCE',
+      description: 'Final convergence summary after the run completes',
+      sample: { converged: true, iterations: 90, finalLoss: 0.004 }
+    }
+  ],
+  notes: [
+    'All payloads are encoded with msgpack on the WebSocket channel.',
+    'Synthetic data drifts slowly so UI charts animate during demos.'
+  ]
+})
+
 const solverSchemaCatalog = {
   sealed: {
     request: {
@@ -476,6 +599,11 @@ const server = http.createServer((req, res) => {
     return
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/mock-log') {
+    sendJson(res, 200, mockLog)
+    return
+  }
+
   if (req.method === 'GET' && url.pathname.startsWith('/api/schemas/solvers/')) {
     const alignment = url.pathname.split('/').pop()?.toLowerCase()
     const entry = alignment ? solverSchemaCatalog[alignment] : null
@@ -556,6 +684,19 @@ server.on('upgrade', (req, socket, head) => {
   }
 })
 
+function printMockCatalog() {
+  console.log('\nMock HTTP endpoints:')
+  for (const entry of mockLog.http) {
+    console.log(`  [${entry.method}] ${entry.path} — ${entry.description}`)
+  }
+  console.log('\nMock WebSocket messages:')
+  for (const entry of mockLog.websocket) {
+    console.log(`  [${entry.type}] ${entry.description}`)
+  }
+  console.log('')
+}
+
 server.listen(8787, () => {
   console.log('Mock API+WS on http://localhost:8787 (WS at /ws)')
+  printMockCatalog()
 })
