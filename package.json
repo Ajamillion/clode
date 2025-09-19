@@ -16,6 +16,7 @@
     "py:test": "python -m unittest discover -s python/tests",
     "py:tolerance": "python python/scripts/generate_tolerance_snapshots.py --output tolerance-snapshots",
     "py:schemas": "python python/scripts/export_solver_schemas.py --output schema-exports --pretty",
+    "py:directivity": "python python/scripts/export_hybrid_directivity.py",
     "py:compare": "python python/scripts/compare_measurements.py",
     "test:e2e": "pnpm --filter @motosub/web-ui test:e2e"
   }

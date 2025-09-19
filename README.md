@@ -184,3 +184,14 @@ Diagnosis output highlights systematic biases: low/mid/high-band SPL offsets, su
 Pass `--min-frequency` and/or `--max-frequency` to focus the analysis on a specific band—handy when measurements get noisy at the extremes or when you only care about the sub-bass window. The Studio measurement panel mirrors the behaviour with inline band controls so UI-driven comparisons stay aligned with the CLI outputs. Add `--smoothing-fraction <N>` to enable fractional-octave smoothing (1/N) across the SPL deltas; the Studio panel exposes the same selector so its overlays and summaries match the CLI output.
 
 Once a comparison completes in Studio, use the **Export CSV** action to download a frequency-by-frequency snapshot that includes the measurement trace, solver prediction, delta overlays, and any calibrated rerun data. The export honours the active frequency band so downstream analysis tools stay aligned with the window you evaluated in the UI.
+
+## Hybrid directivity export CLI
+
+Run `export_hybrid_directivity.py` to capture the hybrid solver’s piston directivity profiles without going through the gateway. The tool sweeps the reduced-order hybrid model for the default driver, honouring sealed or vented alignments, and writes either CSV or JSON while reporting the -6 dB beamwidth alongside the directivity index:
+
+```bash
+pnpm py:directivity -- --output ./directivity.csv --mode vented --volume-l 62 \
+  --freq-start 30 --freq-stop 180 --freq-count 72 --format csv
+```
+
+Switch `--format json --pretty` to store the directivity index, per-angle traces, sampled -6 dB beamwidths, and run metadata/aggregated statistics. Additional flags let you tune the port geometry, grid resolution, or disable the suspension creep model when exploring alternate assumptions.

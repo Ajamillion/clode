@@ -5,7 +5,7 @@
 - Prioritize maintainability and incremental delivery over speculative scope while preserving extensibility for advanced research features.
 - Ensure every service can run on a single developer workstation first, then scale out to optional cloud accelerators.
 
-_Progress snapshot:_ M1 and M2 remain complete while M3 now closes at 100 % after adding piston directivity traces with directivity index telemetry—now surfaced in the Studio spectra overlay—on top of the earlier SPL correlation/MAE/R²/P95/median absolute deviation metrics, keeping the overall roadmap about 75 % toward v1.0.
+_Progress snapshot:_ M1 and M2 remain complete while M3 now closes at 100 % after adding piston directivity traces with directivity index telemetry—now surfaced in the Studio spectra overlay, augmented with -6 dB beamwidth summaries, and exportable via a standalone hybrid directivity CLI—on top of the earlier SPL correlation/MAE/R²/P95/median absolute deviation metrics, keeping the overall roadmap about 75 % toward v1.0.
 
 ## 2. Guiding Design Principles
 1. **Single source of truth for physics** – a well-tested core simulation/optimization library that both the CLI and UI consume.
@@ -80,6 +80,7 @@ _Progress snapshot:_ M1 and M2 remain complete while M3 now closes at 100 % af
 - **Testing**: Pytest for `spl_core`, Vitest/Playwright for Studio, smoke tests for CLI.
 - **Build**: `uv` for Python deps, `pnpm` workspaces for JS/TS; `make` orchestrates.
 - **Packaging**: Docker images with a docker-compose dev stack, alongside Python wheels and npm packages for direct installs.
+- **Command-line utilities**: Measurement comparison, solver schema export, tolerance snapshot generation, and the hybrid directivity exporter for off-axis studies outside the gateway (now capturing -6 dB beamwidth statistics alongside directivity index traces).
 - **Observability**: Structured logging (loguru), metrics via `prometheus-client`, OpenTelemetry export toggled by env var.
 
 ## 5. Deployment Modes
