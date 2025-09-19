@@ -198,10 +198,18 @@ export function MeasurementPanel() {
 
   const comparisonBand = useMemo(() => {
     const band = comparison?.frequency_band
-    if (band) {
+    const statsBandMin = comparison?.stats?.minimum_frequency_hz ?? null
+    const statsBandMax = comparison?.stats?.maximum_frequency_hz ?? null
+    if (band && (band.min_hz != null || band.max_hz != null)) {
       return {
         min: band.min_hz ?? null,
         max: band.max_hz ?? null,
+      }
+    }
+    if (statsBandMin != null || statsBandMax != null) {
+      return {
+        min: statsBandMin,
+        max: statsBandMax,
       }
     }
     return {
@@ -211,6 +219,8 @@ export function MeasurementPanel() {
   }, [
     comparison?.frequency_band?.min_hz,
     comparison?.frequency_band?.max_hz,
+    comparison?.stats?.minimum_frequency_hz,
+    comparison?.stats?.maximum_frequency_hz,
     minFrequencyHz,
     maxFrequencyHz,
     measurementSummary?.minFreq,
@@ -220,10 +230,17 @@ export function MeasurementPanel() {
   const highlightEntries = useMemo(() => {
     const entries: { label: string; value: string }[] = []
     const band = comparison?.frequency_band
-    if (band) {
+    const statsBandMin = comparison?.stats?.minimum_frequency_hz ?? null
+    const statsBandMax = comparison?.stats?.maximum_frequency_hz ?? null
+    if (band && (band.min_hz != null || band.max_hz != null)) {
       entries.push({
         label: 'Band',
         value: `${formatFrequency(band.min_hz ?? null)} → ${formatFrequency(band.max_hz ?? null)}`,
+      })
+    } else if (statsBandMin != null || statsBandMax != null) {
+      entries.push({
+        label: 'Band',
+        value: `${formatFrequency(statsBandMin)} → ${formatFrequency(statsBandMax)}`,
       })
     }
     if (comparison?.smoothing_fraction != null) {

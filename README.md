@@ -31,6 +31,7 @@ A focused loudspeaker enclosure co-design platform blending physics-based simula
 - ✅ Measurement stats expose the SPL 95th-percentile absolute error to spotlight worst-case deviations alongside average metrics
 - ✅ Measurement stats also report the highest and lowest SPL deltas so reviewers see the most positive and negative excursions alongside the absolute worst-case value
 - ✅ Measurement stats capture SPL delta standard deviation and median absolute deviation so reviewers can gauge typical and robust spread alongside extrema-focused metrics
+- ✅ Measurement stats now record the analysed frequency band so exports and UI summaries always state the sample range driving the error metrics
 - ✅ Measurement comparison exports capture measured/predicted traces, deltas, and calibrated reruns as CSV snapshots for downstream analysis
 - ✅ Measurement comparisons support fractional-octave smoothing across the CLI, gateway, and Studio controls so noisy traces can be tamed consistently
 - ✅ GitHub Actions workflow that runs lint/type/test gates for Python + TypeScript workspaces and publishes Monte Carlo tolerance artefacts

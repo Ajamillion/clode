@@ -113,6 +113,8 @@ export type MeasurementDelta = {
 
 export type MeasurementStats = {
   sample_count: number
+  minimum_frequency_hz?: number | null
+  maximum_frequency_hz?: number | null
   spl_rmse_db?: number | null
   spl_mae_db?: number | null
   spl_bias_db?: number | null

@@ -77,6 +77,8 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
             self.assertEqual(payload["smoothing_fraction"], 6)
             stats = payload["stats"]
             self.assertEqual(stats["sample_count"], len(frequencies))
+            self.assertAlmostEqual(stats["minimum_frequency_hz"], min(frequencies))
+            self.assertAlmostEqual(stats["maximum_frequency_hz"], max(frequencies))
             self.assertLess(stats["spl_rmse_db"], 1e-6)
             self.assertLess(stats["spl_mae_db"], 1e-6)
             self.assertAlmostEqual(stats["spl_pearson_r"], 1.0, places=6)
@@ -102,6 +104,8 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
 
             stats_file = json.loads(stats_path.read_text(encoding="utf-8"))
             self.assertEqual(stats_file["sample_count"], len(frequencies))
+            self.assertAlmostEqual(stats_file["minimum_frequency_hz"], min(frequencies))
+            self.assertAlmostEqual(stats_file["maximum_frequency_hz"], max(frequencies))
             self.assertAlmostEqual(stats_file["spl_pearson_r"], 1.0, places=6)
             self.assertAlmostEqual(stats_file["spl_r_squared"], 1.0, places=6)
             self.assertLess(stats_file["spl_mae_db"], 1e-6)
@@ -113,6 +117,8 @@ class CompareMeasurementsScriptTests(unittest.TestCase):
 
             calibrated_stats_file = json.loads(calibrated_stats_path.read_text(encoding="utf-8"))
             self.assertEqual(calibrated_stats_file["sample_count"], len(frequencies))
+            self.assertAlmostEqual(calibrated_stats_file["minimum_frequency_hz"], min(frequencies))
+            self.assertAlmostEqual(calibrated_stats_file["maximum_frequency_hz"], max(frequencies))
             self.assertAlmostEqual(calibrated_stats_file["spl_pearson_r"], 1.0, places=6)
             self.assertAlmostEqual(calibrated_stats_file["spl_r_squared"], 1.0, places=6)
             self.assertLess(calibrated_stats_file["spl_mae_db"], 1e-6)

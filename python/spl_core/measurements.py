@@ -169,6 +169,8 @@ class MeasurementStats:
     """Aggregated error metrics summarising measurement fit."""
 
     sample_count: int
+    minimum_frequency_hz: float
+    maximum_frequency_hz: float
     spl_rmse_db: float | None
     spl_mae_db: float | None
     spl_bias_db: float | None
@@ -186,6 +188,8 @@ class MeasurementStats:
     def to_dict(self) -> dict[str, Any]:
         return {
             "sample_count": self.sample_count,
+            "minimum_frequency_hz": self.minimum_frequency_hz,
+            "maximum_frequency_hz": self.maximum_frequency_hz,
             "spl_rmse_db": self.spl_rmse_db,
             "spl_mae_db": self.spl_mae_db,
             "spl_bias_db": self.spl_bias_db,
@@ -374,8 +378,17 @@ def compare_measurement_to_prediction(
         measurement_for_stats.impedance_ohm, prediction_for_stats.impedance_ohm
     )
 
+    if not measurement_for_stats.frequency_hz:
+        msg = "Measurement trace is empty after preprocessing"
+        raise ValueError(msg)
+
+    min_freq = float(min(measurement_for_stats.frequency_hz))
+    max_freq = float(max(measurement_for_stats.frequency_hz))
+
     stats = MeasurementStats(
         sample_count=len(measurement_for_stats.frequency_hz),
+        minimum_frequency_hz=min_freq,
+        maximum_frequency_hz=max_freq,
         spl_rmse_db=_rmse(spl_delta),
         spl_mae_db=_mae(spl_delta),
         spl_bias_db=_mean(spl_delta),

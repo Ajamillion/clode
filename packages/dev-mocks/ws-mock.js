@@ -298,6 +298,8 @@ function computePercentileAbs(values, percentile) {
 function buildMeasurementStats(delta) {
   return {
     sample_count: delta.frequency_hz.length,
+    minimum_frequency_hz: computeMin(delta.frequency_hz),
+    maximum_frequency_hz: computeMax(delta.frequency_hz),
     spl_rmse_db: computeRmse(delta.spl_delta_db),
     spl_mae_db: computeMae(delta.spl_delta_db),
     spl_bias_db: computeMean(delta.spl_delta_db),

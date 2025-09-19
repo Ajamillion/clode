@@ -206,6 +206,8 @@ export function normaliseMeasurementStats(raw: unknown): MeasurementStats | null
   }
   return {
     sample_count: Math.trunc(sampleCount),
+    minimum_frequency_hz: read('minimum_frequency_hz'),
+    maximum_frequency_hz: read('maximum_frequency_hz'),
     spl_rmse_db: read('spl_rmse_db'),
     spl_mae_db: read('spl_mae_db'),
     spl_bias_db: read('spl_bias_db'),

@@ -87,6 +87,8 @@ class MeasurementComparisonTests(unittest.TestCase):
         self.assertIsNotNone(stats.spl_rmse_db)
         assert stats.spl_rmse_db is not None
         self.assertLess(stats.spl_rmse_db, 1e-6)
+        self.assertAlmostEqual(stats.minimum_frequency_hz, min(self.prediction.frequency_hz), places=6)
+        self.assertAlmostEqual(stats.maximum_frequency_hz, max(self.prediction.frequency_hz), places=6)
         self.assertIsNotNone(stats.spl_mae_db)
         assert stats.spl_mae_db is not None
         self.assertLess(stats.spl_mae_db, 1e-6)
@@ -127,6 +129,8 @@ class MeasurementComparisonTests(unittest.TestCase):
         delta, stats, diagnosis = compare_measurement_to_prediction(measurement, self.prediction)
         assert stats.spl_rmse_db is not None
         self.assertAlmostEqual(stats.spl_rmse_db, 0.8, places=2)
+        self.assertAlmostEqual(stats.minimum_frequency_hz, min(measurement.frequency_hz), places=6)
+        self.assertAlmostEqual(stats.maximum_frequency_hz, max(measurement.frequency_hz), places=6)
         assert stats.spl_mae_db is not None
         self.assertAlmostEqual(stats.spl_mae_db, 0.8, places=2)
         assert stats.spl_bias_db is not None

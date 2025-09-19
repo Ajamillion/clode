@@ -99,6 +99,7 @@ preserving the long-term vision.
 - Latest iteration adds piston directivity modelling and directivity index summaries to the hybrid solver so Studio, the CLI, and the gateway can surface off-axis behaviour alongside pressure snapshots—now complete with spectra-panel visualisations and mock payloads—marking Milestone 3 as complete.
 - Added `export_hybrid_directivity.py` to capture hybrid directivity sweeps as CSV or JSON, giving analysts an offline path to inspect directivity index trends and sampled -6 dB beamwidths without relying on the gateway or Studio UI.
 - Fractional-octave smoothing now spans the measurement CLI, FastAPI payloads, and Studio controls so noisy SPL traces can be compared using consistent 1/N-octave averaging across the toolchain.
+- Measurement stats payloads now include the analysed frequency band, ensuring CLI exports, Studio highlights, and downstream integrations always reference the sample range behind the error metrics.
 
 ## 4. Completion Strategy
 
